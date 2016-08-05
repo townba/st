@@ -146,6 +146,12 @@ static unsigned int defaultitalic = 11;
 static unsigned int defaultunderline = 7;
 
 /*
+ * Default destination(s) for OSC 52 (copy/paste) operations: 'c' is clipboard,
+ * 'p' is primary. An empty string disables OSC 52.
+ */
+static const char defaultosc52[] = "p";
+
+/*
  * Internal mouse shortcuts.
  * Beware that overloading Button1 will disable the selection.
  */

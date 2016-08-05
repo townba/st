@@ -91,6 +91,8 @@ char *argv0;
 #define TRUEGREEN(x)		(((x) & 0xff00))
 #define TRUEBLUE(x)		(((x) & 0xff) << 8)
 
+#define XA_CLIPBOARD		XInternAtom(xw.dpy, "CLIPBOARD", 0)
+
 
 enum glyph_attribute {
 	ATTR_NULL       = 0,
@@ -443,7 +445,7 @@ static void xsettitle(char *);
 static void xresettitle(void);
 static void xsetpointermotion(int);
 static void xseturgency(int);
-static void xsetsel(char *, Time);
+static void xsetsel(char *, Bool, Time);
 static void xunloadfont(Font *);
 static void xunloadfonts(void);
 static void xresize(int, int);
@@ -483,6 +485,8 @@ static size_t utf8encode(Rune, char *);
 static char utf8encodebyte(Rune, size_t);
 static char *utf8strchr(char *s, Rune u);
 static size_t utf8validate(Rune *, size_t);
+
+static size_t base64decode(const char *, size_t, uchar **, size_t *);
 
 static ssize_t xwrite(int, const char *, size_t);
 static void *xmalloc(size_t);
@@ -545,6 +549,25 @@ static uchar utfbyte[UTF_SIZ + 1] = {0x80,    0, 0xC0, 0xE0, 0xF0};
 static uchar utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
 static Rune utfmin[UTF_SIZ + 1] = {       0,    0,  0x80,  0x800,  0x10000};
 static Rune utfmax[UTF_SIZ + 1] = {0x10FFFF, 0x7F, 0x7FF, 0xFFFF, 0x10FFFF};
+
+static const uchar base64decodetable[] = {
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
+	52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 64, 64, 64, 64, 64, 64,
+	64,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+	15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 64, 64, 64, 64, 64,
+	64, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+	41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
+};
 
 /* Font Ring Cache */
 enum {
@@ -719,6 +742,45 @@ utf8validate(Rune *u, size_t i)
 	for (i = 1; *u > utfmax[i]; ++i)
 		;
 
+	return i;
+}
+
+size_t
+base64decode(const char *enc, size_t enclen, uchar **out, size_t *outlen)
+{
+	size_t i;
+	uchar *current;
+
+	*out = (uchar *)xmalloc((enclen * 3) / 4 + 1);
+	current = *out;
+	*outlen = 0;
+
+	for (i = 0; i < enclen; ++i) {
+		uchar x = base64decodetable[(uchar)enc[i]];
+		if (x > 63) break;
+		switch (i % 4) {
+		case 0:
+			*current = x << 2;
+			break;
+		case 1:
+			*current++ |= (x >> 4);
+			*current = x << 4;
+			(*outlen)++;
+			break;
+		case 2:
+			*current++ |= (x >> 2);
+			*current = x << 6;
+			(*outlen)++;
+			break;
+		case 3:
+			*current++ |= x;
+			*current = 0;
+			(*outlen)++;
+			break;
+		}
+	}
+	*current = 0;
+	*outlen = current - *out;
 	return i;
 }
 
@@ -1077,14 +1139,14 @@ getsel(void)
 void
 selcopy(Time t)
 {
-	xsetsel(getsel(), t);
+	xsetsel(getsel(), False, t);
 }
 
 void
 propnotify(XEvent *e)
 {
 	XPropertyEvent *xpev;
-	Atom clipboard = XInternAtom(xw.dpy, "CLIPBOARD", 0);
+	Atom clipboard = XA_CLIPBOARD;
 
 	xpev = &e->xproperty;
 	if (xpev->state == PropertyNewValue &&
@@ -1200,7 +1262,7 @@ clipcopy(const Arg *dummy)
 
 	if (sel.primary != NULL) {
 		sel.clipboard = xstrdup(sel.primary);
-		clipboard = XInternAtom(xw.dpy, "CLIPBOARD", 0);
+		clipboard = XA_CLIPBOARD;
 		XSetSelectionOwner(xw.dpy, clipboard, xw.win, CurrentTime);
 	}
 }
@@ -1210,7 +1272,7 @@ clippaste(const Arg *dummy)
 {
 	Atom clipboard;
 
-	clipboard = XInternAtom(xw.dpy, "CLIPBOARD", 0);
+	clipboard = XA_CLIPBOARD;
 	XConvertSelection(xw.dpy, clipboard, sel.xtarget, clipboard,
 			xw.win, CurrentTime);
 }
@@ -1258,7 +1320,7 @@ selrequest(XEvent *e)
 		 * xith XA_STRING non ascii characters may be incorrect in the
 		 * requestor. It is not our problem, use utf8.
 		 */
-		clipboard = XInternAtom(xw.dpy, "CLIPBOARD", 0);
+		clipboard = XA_CLIPBOARD;
 		if (xsre->selection == XA_PRIMARY) {
 			seltext = sel.primary;
 		} else if (xsre->selection == clipboard) {
@@ -1284,14 +1346,24 @@ selrequest(XEvent *e)
 }
 
 void
-xsetsel(char *str, Time t)
+xsetsel(char *str, Bool clipboard, Time t)
 {
+	Atom selection;
+	free(sel.clipboard);
 	free(sel.primary);
-	sel.primary = str;
+	if (clipboard) {
+		selection = XA_CLIPBOARD;
+		sel.clipboard = str;
+		sel.primary = NULL;
+	} else {
+		selection = XA_PRIMARY;
+		sel.clipboard = NULL;
+		sel.primary = str;
+	}
 
-	XSetSelectionOwner(xw.dpy, XA_PRIMARY, xw.win, t);
-	if (XGetSelectionOwner(xw.dpy, XA_PRIMARY) != xw.win)
-		selclear(0);
+	XSetSelectionOwner(xw.dpy, selection, xw.win, t);
+	if (XGetSelectionOwner(xw.dpy, selection) != xw.win)
+		selclear(NULL);
 }
 
 void
@@ -2512,8 +2584,10 @@ csireset(void)
 void
 strhandle(void)
 {
-	char *p = NULL;
+	char *p = NULL, *buf = NULL;
+	const char *c = NULL;
 	int j, narg, par;
+	size_t buflen, plen;
 
 	term.esc &= ~(ESC_STR_END|ESC_STR);
 	strparse();
@@ -2533,6 +2607,41 @@ strhandle(void)
 				break;
 			p = strescseq.args[2];
 			/* FALLTHROUGH */
+		case 52:
+			if (narg < 3 || !defaultosc52[0])
+				break;
+			c = strescseq.args[1];
+			p = strescseq.args[2];
+			if (!strcmp(p, "?")) {
+				/* Pasting from the clipboard as a result of
+				 * a control sequence is a security risk, so we
+				 * always use an empty string.
+				 */
+				buflen = strlen(c) + 8;
+				buf = (char *)xmalloc(buflen);
+				buflen = snprintf(buf, buflen, "\033]52;%s;\\", c);
+				ttywrite(buf, buflen);
+				free(buf);
+				return;
+			}
+			plen = strlen(p);
+			if (base64decode(p, plen, (uchar **)(&buf), &buflen) == plen) {
+				for (*c || (c = defaultosc52); *c; c++) {
+					switch (*c) {
+					case 'c':
+						xsetsel(xstrdup(buf), True, CurrentTime);
+						break;
+					case 'p':
+						xsetsel(xstrdup(buf), False, CurrentTime);
+						break;
+					default:
+						/* Ignored. */
+						break;
+					}
+				}
+			}
+			free(buf);
+			return;
 		case 104: /* color reset, here p = NULL */
 			j = (narg > 1) ? atoi(strescseq.args[1]) : -1;
 			if (xsetcolorname(j, p)) {
