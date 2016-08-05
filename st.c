@@ -386,7 +386,7 @@ static void strparse(void);
 static void strreset(void);
 
 static int tattrset(int);
-static void tprinter(char *, size_t);
+static void tprinter(const char *, size_t);
 static void tdumpsel(void);
 static void tdumpline(int);
 static void tdump(void);
@@ -408,23 +408,23 @@ static void tresize(int, int);
 static void tscrollup(int, int);
 static void tscrolldown(int, int);
 static void tsetattr(int *, int);
-static void tsetchar(Rune, Glyph *, int, int);
+static void tsetchar(Rune, const Glyph *, int, int);
 static void tsetscroll(int, int);
 static void tswapscreen(void);
 static void tsetdirt(int, int);
 static void tsetdirtattr(int);
-static void tsetmode(int, int, int *, int);
+static void tsetmode(int, int, const int *, int);
 static void tfulldirt(void);
 static void techo(Rune);
 static void tcontrolcode(uchar );
 static void tdectest(char );
-static int32_t tdefcolor(int *, int *, int);
+static int32_t tdefcolor(const int *, int *, int);
 static void tdeftran(char);
 static inline int match(uint, uint);
 static void ttynew(void);
 static size_t ttyread(void);
 static void ttyresize(void);
-static void ttysend(char *, size_t);
+static void ttysend(const char *, size_t);
 static void ttywrite(const char *, size_t);
 static void tstrsequence(uchar);
 
@@ -439,9 +439,9 @@ static void xinit(void);
 static void xloadcols(void);
 static int xsetcolorname(int, const char *);
 static int xgeommasktogravity(int);
-static int xloadfont(Font *, FcPattern *);
-static void xloadfonts(char *, double);
-static void xsettitle(char *);
+static int xloadfont(Font *, const FcPattern *);
+static void xloadfonts(const char *, double);
+static void xsettitle(const char *);
 static void xresettitle(void);
 static void xsetpointermotion(int);
 static void xseturgency(int);
@@ -476,14 +476,14 @@ static void selscroll(int, int);
 static void selsnap(int *, int *, int);
 static int x2col(int);
 static int y2row(int);
-static void getbuttoninfo(XEvent *);
-static void mousereport(XEvent *);
+static void getbuttoninfo(const XEvent *);
+static void mousereport(const XEvent *);
 
-static size_t utf8decode(char *, Rune *, size_t);
+static size_t utf8decode(const char *, Rune *, size_t);
 static Rune utf8decodebyte(char, size_t *);
 static size_t utf8encode(Rune, char *);
 static char utf8encodebyte(Rune, size_t);
-static char *utf8strchr(char *s, Rune u);
+static const char *utf8strchr(const char *s, Rune u);
 static size_t utf8validate(Rune *, size_t);
 
 static size_t base64decode(const char *, size_t, uchar **, size_t *);
@@ -491,7 +491,7 @@ static size_t base64decode(const char *, size_t, uchar **, size_t *);
 static ssize_t xwrite(int, const char *, size_t);
 static void *xmalloc(size_t);
 static void *xrealloc(void *, size_t);
-static char *xstrdup(char *);
+static char *xstrdup(const char *);
 
 static void usage(void);
 
@@ -531,7 +531,8 @@ static int cmdfd;
 static pid_t pid;
 static Selection sel;
 static int iofd = 1;
-static char **opt_cmd  = NULL;
+static int opt_allowaltscreen = allowaltscreen;
+static const char **opt_cmd  = NULL;
 static char *opt_class = NULL;
 static char *opt_embed = NULL;
 static char *opt_font  = NULL;
@@ -541,7 +542,7 @@ static char *opt_name  = NULL;
 static char *opt_title = NULL;
 static int oldbutton   = 3; /* button event on startup: 3 = release */
 
-static char *usedfont = NULL;
+static const char *usedfont = NULL;
 static double usedfontsize = 0;
 static double defaultfontsize = 0;
 
@@ -650,16 +651,17 @@ xrealloc(void *p, size_t len)
 }
 
 char *
-xstrdup(char *s)
+xstrdup(const char *s)
 {
-	if ((s = strdup(s)) == NULL)
+	char *dup = strdup(s);
+	if (dup == NULL)
 		die("Out of memory\n");
 
-	return s;
+	return dup;
 }
 
 size_t
-utf8decode(char *c, Rune *u, size_t clen)
+utf8decode(const char *c, Rune *u, size_t clen)
 {
 	size_t i, j, len, type;
 	Rune udecoded;
@@ -717,8 +719,8 @@ utf8encodebyte(Rune u, size_t i)
 	return utfbyte[i] | (u & ~utfmask[i]);
 }
 
-char *
-utf8strchr(char *s, Rune u)
+const char *
+utf8strchr(const char *s, Rune u)
 {
 	Rune r;
 	size_t i, j, len;
@@ -948,7 +950,7 @@ selsnap(int *x, int *y, int direction)
 }
 
 void
-getbuttoninfo(XEvent *e)
+getbuttoninfo(const XEvent *e)
 {
 	int type;
 	uint state = e->xbutton.state & ~(Button1Mask | forceselmod);
@@ -969,7 +971,7 @@ getbuttoninfo(XEvent *e)
 }
 
 void
-mousereport(XEvent *e)
+mousereport(const XEvent *e)
 {
 	int x = x2col(e->xbutton.x), y = y2row(e->xbutton.y),
 	    button = e->xbutton.button, state = e->xbutton.state,
@@ -1036,7 +1038,7 @@ void
 bpress(XEvent *e)
 {
 	struct timespec now;
-	MouseShortcut *ms;
+	const MouseShortcut *ms;
 
 	if (IS_SET(MODE_MOUSE) && !(e->xbutton.state & forceselmod)) {
 		mousereport(e);
@@ -1425,7 +1427,7 @@ die(const char *errstr, ...)
 void
 execsh(void)
 {
-	char **args, *sh, *prog;
+	const char **args, *sh, *prog;
 	const struct passwd *pw;
 	char buf[sizeof(long) * 8 + 1];
 
@@ -1446,7 +1448,7 @@ execsh(void)
 		prog = utmp;
 	else
 		prog = sh;
-	args = (opt_cmd) ? opt_cmd : (char *[]) {prog, NULL};
+	args = (opt_cmd) ? opt_cmd : (const char *[]) {prog, NULL};
 
 	snprintf(buf, sizeof(buf), "%lu", xw.win);
 
@@ -1467,7 +1469,7 @@ execsh(void)
 	signal(SIGTERM, SIG_DFL);
 	signal(SIGALRM, SIG_DFL);
 
-	execvp(prog, args);
+	execvp(prog, (char *const *)args);
 	_exit(1);
 }
 
@@ -1492,7 +1494,8 @@ sigchld(int a)
 void
 stty(void)
 {
-	char cmd[_POSIX_ARG_MAX], **p, *q, *s;
+	char cmd[_POSIX_ARG_MAX], *q;
+	const char **p, *s;
 	size_t n, siz;
 
 	if ((n = strlen(stty_args)) > sizeof(cmd)-1)
@@ -1652,7 +1655,7 @@ write_error:
 }
 
 void
-ttysend(char *s, size_t n)
+ttysend(const char *s, size_t n)
 {
 	int len;
 	Rune u;
@@ -1928,7 +1931,7 @@ tmoveto(int x, int y)
 }
 
 void
-tsetchar(Rune u, Glyph *attr, int x, int y)
+tsetchar(Rune u, const Glyph *attr, int x, int y)
 {
 	static char *vt100_0[62] = { /* 0x41 - 0x7e */
 		"↑", "↓", "→", "←", "█", "▚", "☃", /* A - G */
@@ -2042,7 +2045,7 @@ tdeleteline(int n)
 }
 
 int32_t
-tdefcolor(int *attr, int *npar, int l)
+tdefcolor(const int *attr, int *npar, int l)
 {
 	int32_t idx = -1;
 	uint r, g, b;
@@ -2209,9 +2212,10 @@ tsetscroll(int t, int b)
 }
 
 void
-tsetmode(int priv, int set, int *args, int narg)
+tsetmode(int priv, int set, const int *args, int narg)
 {
-	int *lim, mode;
+	const int *lim;
+	int mode;
 	int alt;
 
 	for (lim = args + narg; args < lim; ++args) {
@@ -2276,13 +2280,13 @@ tsetmode(int priv, int set, int *args, int narg)
 				MODBIT(term.mode, set, MODE_8BIT);
 				break;
 			case 1049: /* swap screen & set/restore cursor as xterm */
-				if (!allowaltscreen)
+				if (!opt_allowaltscreen)
 					break;
 				tcursor((set) ? CURSOR_SAVE : CURSOR_LOAD);
 				/* FALLTHROUGH */
 			case 47: /* swap screen */
 			case 1047:
-				if (!allowaltscreen)
+				if (!opt_allowaltscreen)
 					break;
 				alt = IS_SET(MODE_ALTSCREEN);
 				if (alt) {
@@ -2732,7 +2736,7 @@ sendbreak(const Arg *arg)
 }
 
 void
-tprinter(char *s, size_t len)
+tprinter(const char *s, size_t len)
 {
 	if (iofd != -1 && xwrite(iofd, s, len) < 0) {
 		fprintf(stderr, "Error writing in %s:%s\n",
@@ -3365,8 +3369,8 @@ xclear(int x1, int y1, int x2, int y2)
 void
 xhints(void)
 {
-	XClassHint class = {opt_name ? opt_name : termname,
-	                    opt_class ? opt_class : termname};
+	XClassHint class = {(char *)(opt_name ? opt_name : termname),
+	                    (char *)(opt_class ? opt_class : termname)};
 	XWMHints wm = {.flags = InputHint, .input = 1};
 	XSizeHints *sizeh = NULL;
 
@@ -3412,7 +3416,7 @@ xgeommasktogravity(int mask)
 }
 
 int
-xloadfont(Font *f, FcPattern *pattern)
+xloadfont(Font *f, const FcPattern *pattern)
 {
 	FcPattern *match;
 	FcResult result;
@@ -3446,7 +3450,7 @@ xloadfont(Font *f, FcPattern *pattern)
 }
 
 void
-xloadfonts(char *fontstr, double fontsize)
+xloadfonts(const char *fontstr, double fontsize)
 {
 	FcPattern *pattern;
 	double fontval;
@@ -4062,11 +4066,11 @@ xdrawcursor(void)
 
 
 void
-xsettitle(char *p)
+xsettitle(const char *p)
 {
 	XTextProperty prop;
 
-	Xutf8TextListToTextProperty(xw.dpy, &p, 1, XUTF8StringStyle,
+	Xutf8TextListToTextProperty(xw.dpy, (char **)(&p), 1, XUTF8StringStyle,
 			&prop);
 	XSetWMName(xw.dpy, xw.win, &prop);
 	XSetTextProperty(xw.dpy, xw.win, &prop, xw.netwmname);
@@ -4216,7 +4220,7 @@ numlock(const Arg *dummy)
 char*
 kmap(KeySym k, uint state)
 {
-	Key *kp;
+	const Key *kp;
 	int i;
 
 	/* Check for mapped keys out of X11 function keys. */
@@ -4262,7 +4266,7 @@ kpress(XEvent *ev)
 	int len;
 	Rune c;
 	Status status;
-	Shortcut *bp;
+	const Shortcut *bp;
 
 	if (IS_SET(MODE_KBDLOCK))
 		return;
@@ -4482,7 +4486,7 @@ main(int argc, char *argv[])
 
 	ARGBEGIN {
 	case 'a':
-		allowaltscreen = 0;
+		opt_allowaltscreen = 0;
 		break;
 	case 'c':
 		opt_class = EARGF(usage());
@@ -4527,7 +4531,7 @@ main(int argc, char *argv[])
 run:
 	if (argc > 0) {
 		/* eat all remaining arguments */
-		opt_cmd = argv;
+		opt_cmd = (const char **)argv;
 		if (!opt_title && !opt_line)
 			opt_title = basename(xstrdup(argv[0]));
 	}
