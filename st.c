@@ -486,7 +486,7 @@ static char utf8encodebyte(Rune, size_t);
 static const char *utf8strchr(const char *s, Rune u);
 static size_t utf8validate(Rune *, size_t);
 
-static size_t base64decode(const char *, size_t, uchar **, size_t *);
+static size_t base64decode(const char *, uchar **, size_t *);
 
 static ssize_t xwrite(int, const char *, size_t);
 static void *xmalloc(size_t);
@@ -748,9 +748,9 @@ utf8validate(Rune *u, size_t i)
 }
 
 size_t
-base64decode(const char *enc, size_t enclen, uchar **out, size_t *outlen)
+base64decode(const char *enc, uchar **out, size_t *outlen)
 {
-	size_t i;
+	size_t i, enclen = strlen(enc);
 	uchar *current;
 
 	*out = (uchar *)xmalloc((enclen * 3) / 4 + 1);
@@ -2591,7 +2591,7 @@ strhandle(void)
 	char *p = NULL, *buf = NULL;
 	const char *c = NULL;
 	int j, narg, par;
-	size_t buflen, plen;
+	size_t buflen;
 
 	term.esc &= ~(ESC_STR_END|ESC_STR);
 	strparse();
@@ -2628,8 +2628,7 @@ strhandle(void)
 				free(buf);
 				return;
 			}
-			plen = strlen(p);
-			if (base64decode(p, plen, (uchar **)(&buf), &buflen) == plen) {
+			if (base64decode(p, (uchar **)(&buf), &buflen) == strlen(p)) {
 				for (*c || (c = defaultosc52); *c; c++) {
 					switch (*c) {
 					case 'c':
