@@ -4,6 +4,10 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <locale.h>
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -559,6 +563,31 @@ typedef struct {
 /* Fontcache is an array now. A new font will be appended to the array. */
 static Fontcache frc[16];
 static int frclen = 0;
+
+#ifdef __MACH__
+#define CLOCK_MONOTONIC 1
+static int clock_gettime(int clk_id, struct timespec *ts)
+{
+	clock_serv_t clock_serv;
+	mach_timespec_t cur_time;
+	if (host_get_clock_service(mach_host_self(), SYSTEM_CLOCK,
+			&clock_serv) != KERN_SUCCESS) {
+		errno = EPERM;
+		return -1;
+	}
+	if (clock_get_time(clock_serv, &cur_time) != KERN_SUCCESS) {
+		errno = EPERM;
+		return -1;
+	}
+	if (mach_port_deallocate(mach_task_self(), clock_serv) != KERN_SUCCESS) {
+		errno = EPERM;
+		return -1;
+	}
+	ts->tv_sec = cur_time.tv_sec;
+	ts->tv_nsec = cur_time.tv_nsec;
+	return 0;
+}
+#endif
 
 ssize_t
 xwrite(int fd, const char *s, size_t len)
