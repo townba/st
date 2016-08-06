@@ -3666,7 +3666,7 @@ xinit(int argc, char *argv[])
 	opt_io = xgetresstr(maindb, "st.outputFile", "St.OutputFile", NULL);
 	opt_line = xgetresstr(maindb, "st.line", "St.Line", NULL);
 	opt_name = xgetresstr(maindb, "st.name", "St.Name", NULL);
-	opt_title = xgetresstr(maindb, "st.title", "St.Title", NULL);
+	opt_title = xgetresstr(maindb, "st.title", "St.Title", argv0);
 	opt_embed = xgetresstr(maindb, "st.embed", "St.Embed", NULL);
 	if (argc) {
 		/* Does the first argument look like a flag? */
@@ -3677,9 +3677,8 @@ xinit(int argc, char *argv[])
 			else
 				usage();
 		}
-		opt_cmd = (const char**)(argv);
-		if (!opt_title && !opt_line)
-			opt_title = xstrdup(basename(argv[0]));
+		if (argc)
+			opt_cmd = (const char**)(argv);
 	}
 
 	tnew(MAX(cols, 1), MAX(rows, 1));
@@ -4565,14 +4564,11 @@ run(void)
 void
 usage(void)
 {
-	die("usage: %s [-aiv] [-c class] [-f font] [-g geometry]"
-	    " [-n name] [-o file]\n"
-	    "          [-T title] [-t title] [-w windowid]"
-	    " [[-e] command [args ...]]\n"
-	    "       %s [-aiv] [-c class] [-f font] [-g geometry]"
-	    " [-n name] [-o file]\n"
-	    "          [-T title] [-t title] [-w windowid] -l line"
-	    " [stty_args ...]\n", argv0, argv0);
+	die("usage: %s [-aiv] [-c <class>] [-f <font>] [-g <geometry>]\n"
+	    "          [-n <name>] [-o <file>] [-T <title>] [-t <title>]\n"
+	    "          [-w <windowid>]\n"
+	    "          [[-e] <command> [<arg>...] | -l <line> [stty_args]]\n",
+	    argv0, argv0);
 }
 
 int
