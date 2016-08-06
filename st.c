@@ -33,12 +33,11 @@
 #include <X11/keysym.h>
 #include <X11/Xft/Xft.h>
 #include <X11/XKBlib.h>
+#include <X11/Xresource.h>
 #include <fontconfig/fontconfig.h>
 #include <wchar.h>
 
-#include "arg.h"
-
-char *argv0;
+const char *argv0;
 
 #define Glyph Glyph_
 #define Font Font_
@@ -437,7 +436,9 @@ static void xdrawglyph(Glyph, int, int);
 static void xhints(void);
 static void xclear(int, int, int, int);
 static void xdrawcursor(void);
-static void xinit(void);
+static const char *xgetresstr(XrmDatabase, const char *, const char *, const char *);
+static Bool xgetresbool(XrmDatabase, const char *, const char *, Bool);
+static void xinit(int argc, char *argv[]);
 static void xloadcols(void);
 static int xsetcolorname(int, const char *);
 static int xgeommasktogravity(int);
@@ -535,13 +536,13 @@ static Selection sel;
 static int iofd = 1;
 static int opt_allowaltscreen = allowaltscreen;
 static const char **opt_cmd  = NULL;
-static char *opt_class = NULL;
-static char *opt_embed = NULL;
-static char *opt_font  = NULL;
-static char *opt_io    = NULL;
-static char *opt_line  = NULL;
-static char *opt_name  = NULL;
-static char *opt_title = NULL;
+static const char *opt_class = NULL;
+static const char *opt_embed = NULL;
+static const char *opt_font  = NULL;
+static const char *opt_io    = NULL;
+static const char *opt_line  = NULL;
+static const char *opt_name  = NULL;
+static const char *opt_title = NULL;
 static int oldbutton   = 3; /* button event on startup: 3 = release */
 
 static const char *usedfont = NULL;
@@ -1231,7 +1232,7 @@ selnotify(XEvent *e)
 
 		if (IS_SET(MODE_BRCKTPASTE) && ofs == 0)
 			ttywrite("\033[200~", 6);
-		ttysend((char *)data, nitems * format / 8);
+		ttysend((const char *)data, nitems * format / 8);
 		if (IS_SET(MODE_BRCKTPASTE) && rem == 0)
 			ttywrite("\033[201~", 6);
 		XFree(data);
@@ -2580,8 +2581,8 @@ csireset(void)
 void
 strhandle(void)
 {
-	char *p = NULL, *buf = NULL;
-	const char *c = NULL;
+	const char *p = NULL, *c = NULL;
+	char *buf = NULL;
 	int j, narg, par;
 	size_t buflen;
 
@@ -3571,17 +3572,113 @@ xzoomreset(const Arg *arg)
 	}
 }
 
+const char *
+xgetresstr(XrmDatabase xrmdb, const char *name, const char *xclass,
+		const char *def)
+{
+	char *type = NULL;
+	XrmValue value = {0};
+	if (!XrmGetResource(xrmdb, name, xclass, &type, &value) ||
+			strcmp(type, "String")) {
+		return def;
+	}
+	return value.addr;
+}
+
+Bool
+xgetresbool(XrmDatabase xrmdb, const char *name, const char *xclass,
+		Bool def)
+{
+	const char* val = xgetresstr(xrmdb, name, xclass, NULL);
+	if (!val)
+		return def;
+	else if (!strcmp(val, "false"))
+		return False;
+	else if (!strcmp(val, "true"))
+		return True;
+	else {
+		fprintf(stderr, "unexpected value for %s\n", name);
+		return def;
+	}
+}
+
 void
-xinit(void)
+xinit(int argc, char *argv[])
 {
 	XGCValues gcvalues;
 	Cursor cursor;
 	Window parent;
 	pid_t thispid = getpid();
 	XColor xmousefg, xmousebg;
+	XrmDatabase cmdlinedb = NULL, maindb = NULL;
+	char *resman = NULL;
+	XrmOptionDescRec opTable[] = {
+		{"-?",		"._h",		XrmoptionNoArg,		"true"},
+		{"--",		"._e",		XrmoptionSkipLine,	NULL},
+		{"-a",		".allowAltScreen", XrmoptionNoArg,	"false"},
+		{"-c",		".class",	XrmoptionSepArg,	NULL},
+		{"-e",		"._e",		XrmoptionSkipLine,	NULL},
+		{"-f",		".font",	XrmoptionSepArg,	NULL},
+		{"-g",		".geometry",	XrmoptionSepArg,	NULL},
+		{"-h",		"._h",		XrmoptionNoArg,		"true"},
+		{"-i",		".fixedGeometry", XrmoptionNoArg,	"true"},
+		{"-l",		".line", 	XrmoptionSepArg,	NULL},
+		{"-n",		".name", 	XrmoptionSepArg,	NULL},
+		{"-o",		".outputFile",	XrmoptionSepArg,	NULL},
+		{"-T",		".title",	XrmoptionSepArg,	NULL},
+		{"-t",		".title",	XrmoptionSepArg,	NULL},
+		{"-v",		"._v",		XrmoptionNoArg,		"true"},
+		{"-w",		".embed",	XrmoptionSepArg,	NULL},
+		{"-display",	".display",	XrmoptionSepArg,	NULL},
+		{"-xrm",	NULL,		XrmoptionResArg,	NULL},
+	};
+	uint cols = startcols, rows = startrows;
 
-	if (!(xw.dpy = XOpenDisplay(NULL)))
+	XrmInitialize();
+
+	/* Get some initialization options from just the command line. */
+	XrmParseCommand(&cmdlinedb, opTable,
+			sizeof(opTable) / sizeof(opTable[0]), "st", &argc, argv);
+	--argc, ++argv;
+	if (xgetresbool(cmdlinedb, "st._h", "St._H", False))
+		usage();
+	if (xgetresbool(cmdlinedb, "st._v", "St._V", False))
+		die("%s " VERSION " (c) 2010-2016 st engineers\n", argv0);
+	if (!(xw.dpy = XOpenDisplay(xgetresstr(cmdlinedb, "st.display", "St.Display", NULL))))
 		die("Can't open display\n");
+
+	/* Other options come from resources or the command line. */
+	if ((resman = XResourceManagerString(xw.dpy)) != NULL) {
+		XrmMergeDatabases(XrmGetStringDatabase(resman), &maindb);
+	}
+	/* Command line is higher priority than resources. */
+	XrmMergeDatabases(cmdlinedb, &maindb);
+
+	/* Set options based on resources and command line. */
+	opt_allowaltscreen = xgetresbool(maindb, "st.allowAltScreen",
+			"St.AllowAltScreen", allowaltscreen);
+	opt_class = xgetresstr(maindb, "st.class", "St.Class", NULL);
+	opt_font = xgetresstr(maindb, "st.font", "St.Font", NULL);
+	xw.l = xw.t = 0;
+	xw.gm = XParseGeometry(xgetresstr(maindb, "st.geometry", "St.Geometry", NULL),
+			&xw.l, &xw.t, &cols, &rows);
+	xw.isfixed = xgetresbool(maindb, "st.fixedGeometry", "St.FixedGeometry", False);
+	opt_io = xgetresstr(maindb, "st.outputFile", "St.OutputFile", NULL);
+	opt_line = xgetresstr(maindb, "st.line", "St.Line", NULL);
+	opt_name = xgetresstr(maindb, "st.name", "St.Name", NULL);
+	opt_title = xgetresstr(maindb, "st.title", "St.Title", NULL);
+	opt_embed = xgetresstr(maindb, "st.embed", "St.Embed", NULL);
+	/* If the first argument is telling us to use the arguments, skip it. */
+	if (argc && (!strcmp(argv[0], "-e") || !strcmp(argv[0], "--")))
+		--argc, ++argv;
+	if (argc) {
+		opt_cmd = (const char**)(argv);
+		if (!opt_title && !opt_line)
+			opt_title = xstrdup(basename(argv[0]));
+	}
+
+	tnew(MAX(cols, 1), MAX(rows, 1));
+
 	xw.scr = XDefaultScreen(xw.dpy);
 	xw.vis = XDefaultVisual(xw.dpy, xw.scr);
 
@@ -4476,67 +4573,15 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	uint cols = 80, rows = 24;
+	argv0 = xstrdup(basename(argv[0]));
 
 	xw.l = xw.t = 0;
 	xw.isfixed = False;
 	xw.cursor = cursorshape;
 
-	ARGBEGIN {
-	case 'a':
-		opt_allowaltscreen = 0;
-		break;
-	case 'c':
-		opt_class = EARGF(usage());
-		break;
-	case 'e':
-		if (argc > 0)
-			--argc, ++argv;
-		goto run;
-	case 'f':
-		opt_font = EARGF(usage());
-		break;
-	case 'g':
-		xw.gm = XParseGeometry(EARGF(usage()),
-				&xw.l, &xw.t, &cols, &rows);
-		break;
-	case 'i':
-		xw.isfixed = 1;
-		break;
-	case 'o':
-		opt_io = EARGF(usage());
-		break;
-	case 'l':
-		opt_line = EARGF(usage());
-		break;
-	case 'n':
-		opt_name = EARGF(usage());
-		break;
-	case 't':
-	case 'T':
-		opt_title = EARGF(usage());
-		break;
-	case 'w':
-		opt_embed = EARGF(usage());
-		break;
-	case 'v':
-		die("%s " VERSION " (c) 2010-2016 st engineers\n", argv0);
-		break;
-	default:
-		usage();
-	} ARGEND;
-
-run:
-	if (argc > 0) {
-		/* eat all remaining arguments */
-		opt_cmd = (const char **)argv;
-		if (!opt_title && !opt_line)
-			opt_title = basename(xstrdup(argv[0]));
-	}
 	setlocale(LC_CTYPE, "");
 	XSetLocaleModifiers("");
-	tnew(MAX(cols, 1), MAX(rows, 1));
-	xinit();
+	xinit(argc, argv);
 	selinit();
 	run();
 
