@@ -3668,10 +3668,15 @@ xinit(int argc, char *argv[])
 	opt_name = xgetresstr(maindb, "st.name", "St.Name", NULL);
 	opt_title = xgetresstr(maindb, "st.title", "St.Title", NULL);
 	opt_embed = xgetresstr(maindb, "st.embed", "St.Embed", NULL);
-	/* If the first argument is telling us to use the arguments, skip it. */
-	if (argc && (!strcmp(argv[0], "-e") || !strcmp(argv[0], "--")))
-		--argc, ++argv;
 	if (argc) {
+		/* Does the first argument look like a flag? */
+		if (argv[0][0] == '-') {
+			/* Drop '-e' and '--'. */
+			if (argv[0][1] == 'e' || argv[0][1] == '-')
+				--argc, ++argv;
+			else
+				usage();
+		}
 		opt_cmd = (const char**)(argv);
 		if (!opt_title && !opt_line)
 			opt_title = xstrdup(basename(argv[0]));
