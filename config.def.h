@@ -9,8 +9,8 @@ static const char font[] = "Liberation Mono:pixelsize=12:antialias=true:autohint
 static const int borderpx = 2;
 
 /* Initial number of columns and rows. */
-static const unsigned short startcols = 80;
-static const unsigned short startrows = 24;
+static const ushort startcols = 80;
+static const ushort startrows = 24;
 
 /*
  * What program is execed by st depends of these precedence rules:

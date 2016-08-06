@@ -236,11 +236,11 @@ typedef struct {
 
 /* Internal representation of the screen */
 typedef struct {
-	unsigned short row;     /* nb row */
-	unsigned short col;     /* nb col */
+	ushort row;   /* nb row */
+	ushort col;   /* nb col */
 	Line *line;   /* screen */
 	Line *alt;    /* alternate screen */
-	int *dirty;  /* dirtyness of lines */
+	int *dirty;   /* dirtyness of lines */
 	XftGlyphFontSpec *specbuf; /* font spec buffer used for rendering */
 	TCursor c;    /* cursor */
 	int top;      /* top    scroll limit */
@@ -250,7 +250,7 @@ typedef struct {
 	char trantbl[4]; /* charset table translation */
 	int charset;  /* current charset */
 	int icharset; /* selected charset for sequence */
-	int numlock; /* lock numbers in keyboard */
+	int numlock;  /* lock numbers in keyboard */
 	int *tabs;
 } Term;
 
@@ -3194,7 +3194,7 @@ tresize(int col, int row)
 	int *bp;
 	TCursor c;
 
-	if (col < 1 || row < 1) {
+	if (col < 1 || row < 1 || col > USHRT_MAX || row > USHRT_MAX) {
 		fprintf(stderr,
 		        "tresize: error resizing to %dx%d\n", col, row);
 		return;
