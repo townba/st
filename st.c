@@ -1312,7 +1312,7 @@ selrequest(XEvent *e)
 		xev.property = xsre->property;
 	} else if (xsre->target == sel.xtarget || xsre->target == XA_STRING) {
 		/*
-		 * xith XA_STRING non ascii characters may be incorrect in the
+		 * with XA_STRING non ascii characters may be incorrect in the
 		 * requestor. It is not our problem, use utf8.
 		 */
 		if (xsre->selection == XA_PRIMARY) {
@@ -3032,7 +3032,7 @@ eschandle(uchar ascii)
 	case 'Z': /* DECID -- Identify Terminal */
 		ttywrite(vtiden, sizeof(vtiden) - 1);
 		break;
-	case 'c': /* RIS -- Reset to inital state */
+	case 'c': /* RIS -- Reset to initial state */
 		treset();
 		xresettitle();
 		xloadcols();
