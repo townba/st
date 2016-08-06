@@ -343,6 +343,7 @@ static void printsel(const Arg *);
 static void printscreen(const Arg *) ;
 static void toggleprinter(const Arg *);
 static void sendbreak(const Arg *);
+static void reset(const Arg *);
 
 /* Config.h for applying patches and the configuration. */
 #include "config.h"
@@ -2733,6 +2734,12 @@ sendbreak(const Arg *arg)
 {
 	if (tcsendbreak(cmdfd, 0))
 		perror("Error sending break");
+}
+
+void
+reset(const Arg *arg)
+{
+        treset();
 }
 
 void
