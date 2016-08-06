@@ -4564,10 +4564,10 @@ run(void)
 void
 usage(void)
 {
-	die("usage: %s [-aiv] [-c <class>] [-f <font>] [-g <geometry>]\n"
+	die("usage: %s [-?ahiv] [-c <class>] [-f <font>] [-g <geometry>]\n"
 	    "          [-n <name>] [-o <file>] [-T <title>] [-t <title>]\n"
-	    "          [-w <windowid>]\n"
-	    "          [[-e] <command> [<arg>...] | -l <line> [stty_args]]\n",
+	    "          [-w <windowid>] [-display <display>] [-xrm <xrm>]\n"
+	    "          [[-e | --] <command> [<arg>...] | -l <line> [stty_args]]\n",
 	    argv0, argv0);
 }
 
