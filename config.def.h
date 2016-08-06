@@ -64,7 +64,7 @@ static const unsigned int cursorthickness = 2;
  * bell volume. It must be a value between -100 and 100. Use 0 for disabling
  * it
  */
-static const int bellvolume = 0;
+static const int bellvolume = 100;
 
 /* default TERM value */
 static const char termname[] = "st-256color";
@@ -146,7 +146,7 @@ static const unsigned int mousebg = 0;
  * will reverse too. Another logic would only make the simple feature too
  * complex.
  */
-static const unsigned int defaultitalic = 11;
+static const unsigned int defaultitalic = 7;
 static const unsigned int defaultunderline = 7;
 
 /*
