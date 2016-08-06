@@ -8,6 +8,7 @@
 #include <mach/clock.h>
 #include <mach/mach.h>
 #endif
+#include <math.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -236,8 +237,8 @@ typedef struct {
 
 /* Internal representation of the screen */
 typedef struct {
-	int row;      /* nb row */
-	int col;      /* nb col */
+	unsigned short row;     /* nb row */
+	unsigned short col;     /* nb col */
 	Line *line;   /* screen */
 	Line *alt;    /* alternate screen */
 	int *dirty;  /* dirtyness of lines */
@@ -281,13 +282,13 @@ typedef struct {
 typedef struct {
 	uint b;
 	uint mask;
-	char *s;
+	const char *s;
 } MouseShortcut;
 
 typedef struct {
 	KeySym k;
 	uint mask;
-	char *s;
+	const char *s;
 	/* three valued logic variables: 0 indifferent, 1 on, -1 off */
 	signed char appkey;    /* application keypad */
 	signed char appcursor; /* application cursor */
@@ -453,7 +454,7 @@ static void xresize(int, int);
 static void expose(XEvent *);
 static void visibility(XEvent *);
 static void unmap(XEvent *);
-static char *kmap(KeySym, uint);
+static const char *kmap(KeySym, uint);
 static void kpress(XEvent *);
 static void cmessage(XEvent *);
 static void cresize(int, int);
@@ -1095,7 +1096,7 @@ getsel(void)
 		return NULL;
 
 	bufsize = (term.col+1) * (sel.ne.y-sel.nb.y+1) * UTF_SIZ;
-	ptr = str = xmalloc(bufsize);
+	ptr = str = (char *)xmalloc(bufsize);
 
 	/* append every set & selected glyph to the selection */
 	for (y = sel.nb.y; y <= sel.ne.y; y++) {
@@ -1226,7 +1227,7 @@ selnotify(XEvent *e)
 		 */
 		repl = data;
 		last = data + nitems * format / 8;
-		while ((repl = memchr(repl, '\n', last - repl))) {
+		while ((repl = (uchar *)memchr(repl, '\n', last - repl))) {
 			*repl++ = '\r';
 		}
 
@@ -1933,7 +1934,7 @@ tmoveto(int x, int y)
 void
 tsetchar(Rune u, const Glyph *attr, int x, int y)
 {
-	static char *vt100_0[62] = { /* 0x41 - 0x7e */
+	static const char *vt100_0[62] = { /* 0x41 - 0x7e */
 		"↑", "↓", "→", "←", "█", "▚", "☃", /* A - G */
 		0, 0, 0, 0, 0, 0, 0, 0, /* H - O */
 		0, 0, 0, 0, 0, 0, 0, 0, /* P - W */
@@ -3221,24 +3222,25 @@ tresize(int col, int row)
 	}
 
 	/* resize to new width */
-	term.specbuf = xrealloc(term.specbuf, col * sizeof(XftGlyphFontSpec));
+	term.specbuf = (XftGlyphFontSpec *)xrealloc(term.specbuf,
+			col * sizeof(XftGlyphFontSpec));
 
 	/* resize to new height */
-	term.line = xrealloc(term.line, row * sizeof(Line));
-	term.alt  = xrealloc(term.alt,  row * sizeof(Line));
-	term.dirty = xrealloc(term.dirty, row * sizeof(*term.dirty));
-	term.tabs = xrealloc(term.tabs, col * sizeof(*term.tabs));
+	term.line = (Line *)xrealloc(term.line, row * sizeof(Line));
+	term.alt  = (Line *)xrealloc(term.alt,  row * sizeof(Line));
+	term.dirty = (int *)xrealloc(term.dirty, row * sizeof(*term.dirty));
+	term.tabs = (int *)xrealloc(term.tabs, col * sizeof(*term.tabs));
 
 	/* resize each row to new width, zero-pad if needed */
 	for (i = 0; i < minrow; i++) {
-		term.line[i] = xrealloc(term.line[i], col * sizeof(Glyph));
-		term.alt[i]  = xrealloc(term.alt[i],  col * sizeof(Glyph));
+		term.line[i] = (Line)xrealloc(term.line[i], col * sizeof(Glyph));
+		term.alt[i]  = (Line)xrealloc(term.alt[i],  col * sizeof(Glyph));
 	}
 
 	/* allocate any new rows */
 	for (/* i == minrow */; i < row; i++) {
-		term.line[i] = xmalloc(col * sizeof(Glyph));
-		term.alt[i] = xmalloc(col * sizeof(Glyph));
+		term.line[i] = (Line)xmalloc(col * sizeof(Glyph));
+		term.alt[i] = (Line)xmalloc(col * sizeof(Glyph));
 	}
 	if (col > term.col) {
 		bp = term.tabs + term.col;
@@ -3368,8 +3370,8 @@ xclear(int x1, int y1, int x2, int y2)
 void
 xhints(void)
 {
-	XClassHint class = {(char *)(opt_name ? opt_name : termname),
-	                    (char *)(opt_class ? opt_class : termname)};
+	XClassHint xclass = {(char *)(opt_name ? opt_name : termname),
+	                     (char *)(opt_class ? opt_class : termname)};
 	XWMHints wm = {.flags = InputHint, .input = 1};
 	XSizeHints *sizeh = NULL;
 
@@ -3395,7 +3397,7 @@ xhints(void)
 	}
 
 	XSetWMProperties(xw.dpy, xw.win, NULL, NULL, NULL, 0, sizeh, &wm,
-			&class);
+			&xclass);
 	XFree(sizeh);
 }
 
@@ -3453,7 +3455,6 @@ xloadfonts(const char *fontstr, double fontsize)
 {
 	FcPattern *pattern;
 	double fontval;
-	float ceilf(float);
 
 	if (fontstr[0] == '-') {
 		pattern = XftXlfdParse(fontstr, False, False);
@@ -4104,7 +4105,7 @@ void
 drawregion(int x1, int y1, int x2, int y2)
 {
 	int i, x, y, ox, numspecs;
-	Glyph base, new;
+	Glyph base, gnew;
 	XftGlyphFontSpec *specs;
 	int ena_sel = sel.ob.x != -1 && sel.alt == IS_SET(MODE_ALTSCREEN);
 
@@ -4122,12 +4123,12 @@ drawregion(int x1, int y1, int x2, int y2)
 
 		i = ox = 0;
 		for (x = x1; x < x2 && i < numspecs; x++) {
-			new = term.line[y][x];
-			if (new.mode == ATTR_WDUMMY)
+			gnew = term.line[y][x];
+			if (gnew.mode == ATTR_WDUMMY)
 				continue;
 			if (ena_sel && selected(x, y))
-				new.mode ^= ATTR_REVERSE;
-			if (i > 0 && ATTRCMP(base, new)) {
+				gnew.mode ^= ATTR_REVERSE;
+			if (i > 0 && ATTRCMP(base, gnew)) {
 				xdrawglyphfontspecs(specs, base, i, ox, y);
 				specs += i;
 				numspecs -= i;
@@ -4135,7 +4136,7 @@ drawregion(int x1, int y1, int x2, int y2)
 			}
 			if (i == 0) {
 				ox = x;
-				base = new;
+				base = gnew;
 			}
 			i++;
 		}
@@ -4216,7 +4217,7 @@ numlock(const Arg *dummy)
 	term.numlock ^= 1;
 }
 
-char*
+const char*
 kmap(KeySym k, uint state)
 {
 	const Key *kp;
@@ -4261,7 +4262,8 @@ kpress(XEvent *ev)
 {
 	XKeyEvent *e = &ev->xkey;
 	KeySym ksym;
-	char buf[32], *customkey;
+	char buf[32];
+	const char *customkey;
 	int len;
 	Rune c;
 	Status status;

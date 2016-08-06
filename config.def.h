@@ -209,7 +209,7 @@ static const Shortcut shortcuts[] = {
  * If you want keys other than the X11 function keys (0xFD00 - 0xFFFF)
  * to be mapped below, add them to this array.
  */
-static const KeySym mappedkeys[] = { -1 };
+static const KeySym mappedkeys[] = { (KeySym)(-1) };
 
 /*
  * State bits to ignore when matching key or button events.  By default,
