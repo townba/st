@@ -1287,7 +1287,7 @@ selrequest(XEvent *e)
 {
 	XSelectionRequestEvent *xsre;
 	XSelectionEvent xev;
-	Atom xa_targets, string, clipboard;
+	Atom xa_targets, string;
 	char *seltext;
 
 	xsre = (XSelectionRequestEvent *) e;
@@ -2603,6 +2603,18 @@ strhandle(void)
 				break;
 			p = strescseq.args[2];
 			/* FALLTHROUGH */
+		case 104: /* color reset, here p = NULL */
+			j = (narg > 1) ? atoi(strescseq.args[1]) : -1;
+			if (xsetcolorname(j, p)) {
+				fprintf(stderr, "erresc: invalid color %s\n", p);
+			} else {
+				/*
+				 * TODO if defaultbg color is changed, borders
+				 * are dirty
+				 */
+				redraw();
+			}
+			return;
 		case 52:
 			if (narg < 3 || !defaultosc52[0])
 				break;
@@ -2636,18 +2648,6 @@ strhandle(void)
 				}
 			}
 			free(buf);
-			return;
-		case 104: /* color reset, here p = NULL */
-			j = (narg > 1) ? atoi(strescseq.args[1]) : -1;
-			if (xsetcolorname(j, p)) {
-				fprintf(stderr, "erresc: invalid color %s\n", p);
-			} else {
-				/*
-				 * TODO if defaultbg color is changed, borders
-				 * are dirty
-				 */
-				redraw();
-			}
 			return;
 		}
 		break;
