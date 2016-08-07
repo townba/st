@@ -1,4 +1,4 @@
-A STATEMENT ON LEGACY SUPPORT
+# A STATEMENT ON LEGACY SUPPORT
 
 In the terminal world there is much cruft that comes from old and unsup‐
 ported terminals that inherit incompatible modes  and  escape  sequences
