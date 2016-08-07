@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <locale.h>
-#ifdef __MACH__
+#ifdef __APPLE__
 #include <mach/clock.h>
 #include <mach/mach.h>
 #endif
@@ -591,7 +591,7 @@ typedef struct {
 static Fontcache frc[16];
 static int frclen = 0;
 
-#ifdef __MACH__
+#ifdef __APPLE__
 #define CLOCK_MONOTONIC 1
 static int clock_gettime(int clk_id, struct timespec *ts)
 {
