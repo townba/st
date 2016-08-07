@@ -2536,7 +2536,7 @@ csihandle(void)
 		switch (csiescseq.mode[1]) {
 		case 'q': /* DECSCUSR -- Set Cursor Style */
 			DEFAULT(csiescseq.arg[0], 1);
-			if (!BETWEEN(csiescseq.arg[0], 0, 6)) {
+			if (!BETWEEN(csiescseq.arg[0], 0, 7)) {
 				goto unknown;
 			}
 			xw.cursor = csiescseq.arg[0];
