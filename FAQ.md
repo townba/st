@@ -17,10 +17,10 @@ you can manualy run `tic -s st.info`.
 
 ## I get some weird glitches/visual bug on _random program_!
 
-Try launching it with a different TERM: $ TERM=xterm myapp. toe(1) will give
+Try launching it with a different TERM: `$ TERM=xterm myapp`. toe(1) will give
 you a list of available terminals, but you’ll most likely switch between xterm,
 st or st-256color. The default value for TERM can be changed in config.h
-(TNAME).
+(termname).
 
 ## How do I scroll back up?
 
@@ -41,7 +41,7 @@ Taken from the terminfo manpage:
 	codes as smkx and rmkx. Otherwise the keypad is assumed to
 	always transmit.
 
-In the st case smkx=E[?1hE= and rmkx=E[?1lE>, so it is mandatory that
+In the st case smkx=\E[?1h\E= and rmkx=\E[?1l\E>, so it is mandatory that
 applications which want to test against keypad keys send these
 sequences.
 
@@ -51,6 +51,7 @@ solution for them is to use the following command:
 	$ printf '\033[?1h\033=' >/dev/tty
 
 or
+
 	$ tput smkx
 
 In the case of bash, readline is used. Readline has a different note in its
@@ -64,8 +65,8 @@ manpage about this issue:
 Adding this option to your .inputrc will fix the keypad problem for all
 applications using readline.
 
-If you are using zsh, then read the zsh FAQ
-<http://zsh.sourceforge.net/FAQ/zshfaq03.html#l25>:
+If you are using zsh, then read the zsh
+[FAQ](http://zsh.sourceforge.net/FAQ/zshfaq03.html#l25):
 
 	It should be noted that the O / [ confusion can occur with other keys
 	such as Home and End. Some systems let you query the key sequences
@@ -104,8 +105,8 @@ St is emulating the Linux way of handling backspace being delete and delete bein
 backspace.
 
 This is an issue that was discussed in suckless mailing list
-<http://lists.suckless.org/dev/1404/20697.html>. Here is why some old grumpy
-terminal users wants its backspace to be how he feels it:
+<http://lists.suckless.org/dev/1404/20697.html>. Here is why some
+terminal users want backspace to be different:
 
 	Well, I am going to comment why I want to change the behaviour
 	of this key. When ASCII was defined in 1968, communication
@@ -159,7 +160,7 @@ terminal users wants its backspace to be how he feels it:
 	[1] http://www.ibb.net/~anne/keyboard.html
 	[2] http://www.tldp.org/HOWTO/Keyboard-and-Console-HOWTO-5.html
 
-## But I really want the old grumpy behaviour of my terminal
+## But I really want the other behaviour of my terminal
 
 Apply [1].
 
