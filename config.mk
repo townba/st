@@ -15,7 +15,9 @@ INCS = -I. -I/usr/include -I${X11INC} \
        `pkg-config --cflags fontconfig` \
        `pkg-config --cflags freetype2`
 OSDEP_LIBS =
-ifneq ($(shell uname -s),Darwin)
+ifeq ($(shell uname -s),Darwin)
+else ifeq ($(shell uname -s),OpenBSD)
+else
         OSDEP_LIBS += -lrt
 endif
 LIBS = -L/usr/lib -lc -L${X11LIB} -lm ${OSDEP_LIBS} -lX11 -lutil -lXft \

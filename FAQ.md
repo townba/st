@@ -91,14 +91,6 @@ St supports meta in 8bit mode, but the default terminfo entry doesn't
 use this capability. If you want it, you have to use the 'st-meta' value
 in TERM.
 
-## I cannot compile st in OpenBSD
-
-OpenBSD lacks librt, despite it being mandatory in POSIX
-<http://pubs.opengroup.org/onlinepubs/9699919799/utilities/c99.html#tag_20_11_13>.
-If you want to compile st for OpenBSD you have to remove -lrt from config.mk, and
-st will compile without any loss of functionality, because all the functions are
-included in libc on this platform.
-
 ## The Backspace Case
 
 St is emulating the Linux way of handling backspace being delete and delete being
