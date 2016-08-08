@@ -534,7 +534,7 @@ static int cmdfd;
 static pid_t pid;
 static Selection sel;
 static int iofd = 1;
-static int opt_allowaltscreen = allowaltscreen;
+static int opt_allowaltscreen;
 static const char **opt_cmd  = NULL;
 static const char *opt_class = NULL;
 static const char *opt_embed = NULL;
