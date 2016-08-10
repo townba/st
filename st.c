@@ -784,6 +784,7 @@ base64decode(const char *enc, uchar **out, size_t *outlen)
 			break;
 		}
 	}
+	while (enc[i] == '=') ++i;
 	*current = 0;
 	*outlen = current - *out;
 	return i;
