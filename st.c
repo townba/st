@@ -1669,7 +1669,7 @@ void
 ttysend(const char *s, size_t n)
 {
 	int len;
-	char *t, *lim;
+	const char *t, *lim;
 	Rune u;
 
 	ttywrite(s, n);
@@ -3111,7 +3111,7 @@ tputc(Rune u)
 {
 	char c[UTF_SIZ];
 	int control;
-	int width, len;
+	int width = 0, len;
 	Glyph *gp;
 
 	control = ISCONTROL(u);
