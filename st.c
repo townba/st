@@ -378,7 +378,7 @@ static void drawregion(int, int, int, int);
 static void execsh(void);
 static void stty(void);
 static void sigchld(int);
-static void run(void);
+static int run(void);
 
 static void csidump(void);
 static void csihandle(void);
@@ -553,6 +553,7 @@ static int oldbutton   = 3; /* button event on startup: 3 = release */
 static const char *usedfont = NULL;
 static double usedfontsize = 0;
 static double defaultfontsize = 0;
+static int exit_with_code = -1;
 
 static uchar utfbyte[UTF_SIZ + 1] = {0x80,    0, 0xC0, 0xE0, 0xF0};
 static uchar utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
@@ -1469,7 +1470,7 @@ execsh(void)
 	signal(SIGALRM, SIG_DFL);
 
 	execvp(prog, (char *const *)args);
-	_exit(1);
+	exit(1);
 }
 
 void
@@ -1486,9 +1487,8 @@ sigchld(int a)
 
 	if (!WIFEXITED(stat) || WEXITSTATUS(stat))
 		die("child finished with error '%d'\n", stat);
-	exit(0);
+	exit_with_code = 0;
 }
-
 
 void
 stty(void)
@@ -1578,8 +1578,11 @@ ttyread(void)
 	int ret;
 
 	/* append read bytes to unprocessed bytes */
-	if ((ret = read(cmdfd, buf+buflen, LEN(buf)-buflen)) < 0)
+	if ((ret = read(cmdfd, buf+buflen, LEN(buf)-buflen)) < 0) {
+		/* The process is probably done. */
+		/* TODO(townba): Check errno. */
 		die("Couldn't read from shell: %s\n", strerror(errno));
+	}
 
 	buflen += ret;
 	ptr = buf;
@@ -4489,7 +4492,7 @@ cmessage(XEvent *e)
 	} else if (e->xclient.data.l[0] == xw.wmdeletewin) {
 		/* Send SIGHUP to shell */
 		kill(pid, SIGHUP);
-		exit(0);
+		exit_with_code = 0;
 	}
 }
 
@@ -4520,7 +4523,7 @@ resize(XEvent *e)
 	ttyresize();
 }
 
-void
+int
 run(void)
 {
 	XEvent ev;
@@ -4554,6 +4557,9 @@ run(void)
 	lastblink = last;
 
 	for (xev = actionfps;;) {
+		if (exit_with_code >= 0) {
+			return exit_with_code;
+		}
 		FD_ZERO(&rfd);
 		FD_SET(cmdfd, &rfd);
 		FD_SET(xfd, &rfd);
@@ -4652,7 +4658,5 @@ main(int argc, char *argv[])
 	XSetLocaleModifiers("");
 	xinit(argc, argv);
 	selinit();
-	run();
-
-	return 0;
+	return run();
 }
