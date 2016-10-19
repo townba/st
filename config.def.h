@@ -183,6 +183,7 @@ static const Shortcut shortcuts[] = {
 	{ MODKEY|ShiftMask,     XK_K,           reset,          {.i =  0} },
 	{ MODKEY|ShiftMask,     XK_V,           clippaste,      {.i =  0} },
 	{ MODKEY,               XK_Num_Lock,    numlock,        {.i =  0} },
+	{ MODKEY,               XK_Control_L,   iso14755,       {.i =  0} },
 };
 
 /*
