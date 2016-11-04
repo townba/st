@@ -426,7 +426,7 @@ static void tsetdirtattr(int);
 static void tsetmode(int, int, const int *, int);
 static void tfulldirt(void);
 static void techo(Rune);
-static void tcontrolcode(uchar );
+static void tcontrolcode(uchar);
 static void tdectest(char );
 static void tdefutf8(char);
 static int32_t tdefcolor(const int *, int *, int);
