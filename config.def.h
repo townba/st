@@ -142,12 +142,10 @@ static const unsigned int mousefg = 7;
 static const unsigned int mousebg = 0;
 
 /*
- * Colors used, when the specific fg == defaultfg. So in reverse mode this
- * will reverse too. Another logic would only make the simple feature too
- * complex.
+ * Color used to display font attributes when fontconfig selected a font which
+ * doesn't match the ones requested.
  */
-static const unsigned int defaultitalic = 7;
-static const unsigned int defaultunderline = 7;
+static const unsigned int defaultattr = 7;
 
 /*
  * Default destination(s) for OSC 52 (copy/paste) operations: 'c' is clipboard,
