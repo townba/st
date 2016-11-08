@@ -1964,23 +1964,29 @@ tmoveto(int x, int y)
 void
 tsetchar(Rune u, const Glyph *attr, int x, int y)
 {
-	static const char *vt100_0[62] = { /* 0x41 - 0x7e */
-		"↑", "↓", "→", "←", "█", "▚", "☃", /* A - G */
-		0, 0, 0, 0, 0, 0, 0, 0, /* H - O */
-		0, 0, 0, 0, 0, 0, 0, 0, /* P - W */
-		0, 0, 0, 0, 0, 0, 0, " ", /* X - _ */
-		"◆", "▒", "␉", "␌", "␍", "␊", "°", "±", /* ` - g */
-		"␤", "␋", "┘", "┐", "┌", "└", "┼", "⎺", /* h - o */
-		"⎻", "─", "⎼", "⎽", "├", "┤", "┴", "┬", /* p - w */
-		"│", "≤", "≥", "π", "≠", "£", "·", /* x - ~ */
+	/*
+	 * This table is a combination of tables from ncurses and rxvt with some
+	 * minor tweaks.
+	 */
+	const char first_vt100 = '+';
+	static const Rune vt100_0[] = {
+		0x2192, 0x2190, 0x2191, 0x2193, 0, /* +,\-./ */
+		0x2588, 0, 0, 0, 0, 0, 0, 0, /* 0-7 */
+		0, 0, 0, 0, 0, 0, 0, 0, /* 89:;<=>? */
+		0, 0x255d, 0x2557, 0x2554, 0x255a, 0x256c, 0x2560, 0x2563, /* @A-G */
+		0x2569, 0x2566, 0x251b, 0x2513, 0x250f, 0x2517, 0x254b, 0, /* H-O */
+		0, 0x2501, 0x2550, 0x2603, 0x2523, 0x252b, 0x253b, 0x2533, /* P-W */
+		0x2503, 0x2551, 0, 0, 0, 0, 0, 0x20, /* XYZ[\\]^_ */
+		0x25c6, 0x2592, 0x2409, 0x240c, 0x240d, 0x240a, 0xb0, 0xb1, /* `a-g */
+		0x25a0, 0x240b, 0x2518, 0x2510, 0x250c, 0x2514, 0x253c, 0x23ba, /* h-o */
+		0x23bb, 0x2500, 0x23bc, 0x23bd, 0x251c, 0x2524, 0x2534, 0x252c, /* p-w */
+		0x2502, 0x2264, 0x2265, 0x3c0, 0x2260, 0xa3, 0xb7 /* x-z{|}~ */
 	};
 
-	/*
-	 * The table is proudly stolen from rxvt.
-	 */
 	if (term.trantbl[term.charset] == CS_GRAPHIC0 &&
-	   BETWEEN(u, 0x41, 0x7e) && vt100_0[u - 0x41])
-		utf8decode(vt100_0[u - 0x41], &u, UTF_SIZ);
+	   BETWEEN(u, first_vt100, first_vt100 + LEN(vt100_0) - 1) &&
+	   vt100_0[u - first_vt100])
+		u = vt100_0[u - first_vt100];
 
 	if (term.line[y][x].mode & ATTR_WIDE) {
 		if (x+1 < term.col) {
