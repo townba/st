@@ -3767,8 +3767,7 @@ xinit(int argc, char *argv[])
 	XrmInitialize();
 
 	/* Get some initialization options from just the command line. */
-	XrmParseCommand(&cmdlinedb, opTable,
-			sizeof(opTable) / sizeof(opTable[0]), "st", &argc, argv);
+	XrmParseCommand(&cmdlinedb, opTable, LEN(opTable), "st", &argc, argv);
 	--argc, ++argv;
 	if (xgetresbool(cmdlinedb, "st._h", "St._H", False))
 		usage();
