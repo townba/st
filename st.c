@@ -2660,6 +2660,9 @@ strhandle(void)
 				redraw();
 			}
 			return;
+		case 12: /* set cursor color (IGNORED) */
+		case 112: /* reset cursor color (IGNORED) */
+			return;
 		case 52:
 			if (narg < 3 || !defaultosc52[0])
 				break;
