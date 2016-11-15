@@ -27,6 +27,9 @@ static const char stty_args[] = "stty raw pass8 nl -echo -iexten -cstopb 38400";
 /* identification sequence returned in DA and DECID */
 static const char vtiden[] = "\033[?6c";
 
+/* identification sequence returned in secondary DA */
+static const char vtiden2[] = "\033[>41;1;0c";
+
 /* Kerning / character bounding-box multipliers */
 static const float cwscale = 1.0;
 static const float chscale = 1.0;

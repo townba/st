@@ -220,11 +220,11 @@ typedef struct {
 } TCursor;
 
 /* CSI Escape sequence structs */
-/* ESC '[' [[ [<priv>] <arg> [;]] <mode> [<mode>]] */
+/* ESC '[' [[ [<interm>] <arg> [;]] <mode> [<mode>]] */
 typedef struct {
 	char buf[ESC_BUF_SIZ]; /* raw string */
 	int len;               /* raw string length */
-	char priv;
+	char interm;
 	int arg[ESC_ARG_SIZ];
 	int narg;              /* nb of args */
 	char mode[2];
@@ -383,6 +383,7 @@ static void stty(void);
 static void sigchld(int);
 static int run(void);
 
+static void chardump(char c);
 static void csidump(void);
 static void csihandle(void);
 static void csiparse(void);
@@ -421,7 +422,7 @@ static void tsetscroll(int, int);
 static void tswapscreen(void);
 static void tsetdirt(int, int);
 static void tsetdirtattr(int);
-static void tsetmode(int, int, const int *, int);
+static void tsetmode(char, int, const int *, int);
 static void tfulldirt(void);
 static void techo(Rune);
 static void tcontrolcode(uchar);
@@ -1911,8 +1912,8 @@ csiparse(void)
 	long int v;
 
 	csiescseq.narg = 0;
-	if (*p == '?') {
-		csiescseq.priv = 1;
+	if (BETWEEN(*p, 0x3c, 0x3f)) {
+		csiescseq.interm = *p;
 		p++;
 	}
 
@@ -2246,14 +2247,15 @@ tsetscroll(int t, int b)
 }
 
 void
-tsetmode(int priv, int set, const int *args, int narg)
+tsetmode(char interm, int set, const int *args, int narg)
 {
 	const int *lim;
 	int mode;
 	int alt;
 
 	for (lim = args + narg; args < lim; ++args) {
-		if (priv) {
+		switch (interm) {
+		case '?':
 			switch (*args) {
 			case 1: /* DECCKM -- Cursor key */
 				MODBIT(term.mode, set, MODE_APPCURSOR);
@@ -2356,7 +2358,8 @@ tsetmode(int priv, int set, const int *args, int narg)
 					*args);
 				break;
 			}
-		} else {
+			break;
+		case 0:
 			switch (*args) {
 			case 0:  /* Error (IGNORED) */
 				break;
@@ -2372,12 +2375,15 @@ tsetmode(int priv, int set, const int *args, int narg)
 			case 20: /* LNM -- Linefeed/new line */
 				MODBIT(term.mode, set, MODE_CRLF);
 				break;
+			case 34: /* Wyse underline cursor mode (IGNORED) */
+				break;
 			default:
 				fprintf(stderr,
 					"erresc: unknown set/reset mode %d\n",
 					*args);
 				break;
 			}
+			break;
 		}
 	}
 }
@@ -2388,207 +2394,243 @@ csihandle(void)
 	char buf[40];
 	int len;
 
-	switch (csiescseq.mode[0]) {
-	default:
-	unknown:
-		fprintf(stderr, "erresc: unknown csi ");
-		csidump();
-		/* die(""); */
-		break;
-	case '@': /* ICH -- Insert <n> blank char */
-		DEFAULT(csiescseq.arg[0], 1);
-		tinsertblank(csiescseq.arg[0]);
-		break;
-	case 'A': /* CUU -- Cursor <n> Up */
-		DEFAULT(csiescseq.arg[0], 1);
-		tmoveto(term.c.x, term.c.y-csiescseq.arg[0]);
-		break;
-	case 'B': /* CUD -- Cursor <n> Down */
-	case 'e': /* VPR --Cursor <n> Down */
-		DEFAULT(csiescseq.arg[0], 1);
-		tmoveto(term.c.x, term.c.y+csiescseq.arg[0]);
-		break;
-	case 'i': /* MC -- Media Copy */
-		switch (csiescseq.arg[0]) {
-		case 0:
-			tdump();
-			break;
-		case 1:
-			tdumpline(term.c.y);
-			break;
-		case 2:
-			tdumpsel();
-			break;
-		case 4:
-			term.mode &= ~MODE_PRINT;
-			break;
-		case 5:
-			term.mode |= MODE_PRINT;
-			break;
-		}
-		break;
-	case 'c': /* DA -- Device Attributes */
-		if (csiescseq.arg[0] == 0)
-			ttywrite(vtiden, sizeof(vtiden) - 1);
-		break;
-	case 'C': /* CUF -- Cursor <n> Forward */
-	case 'a': /* HPR -- Cursor <n> Forward */
-		DEFAULT(csiescseq.arg[0], 1);
-		tmoveto(term.c.x+csiescseq.arg[0], term.c.y);
-		break;
-	case 'D': /* CUB -- Cursor <n> Backward */
-		DEFAULT(csiescseq.arg[0], 1);
-		tmoveto(term.c.x-csiescseq.arg[0], term.c.y);
-		break;
-	case 'E': /* CNL -- Cursor <n> Down and first col */
-		DEFAULT(csiescseq.arg[0], 1);
-		tmoveto(0, term.c.y+csiescseq.arg[0]);
-		break;
-	case 'F': /* CPL -- Cursor <n> Up and first col */
-		DEFAULT(csiescseq.arg[0], 1);
-		tmoveto(0, term.c.y-csiescseq.arg[0]);
-		break;
-	case 'g': /* TBC -- Tabulation clear */
-		switch (csiescseq.arg[0]) {
-		case 0: /* clear current tab stop */
-			term.tabs[term.c.x] = 0;
-			break;
-		case 3: /* clear all the tabs */
-			memset(term.tabs, 0, term.col * sizeof(*term.tabs));
-			break;
+	switch (csiescseq.interm) {
+	case 0:
+	case '?':
+		switch (csiescseq.mode[0]) {
 		default:
-			goto unknown;
-		}
-		break;
-	case 'G': /* CHA -- Move to <col> */
-	case '`': /* HPA */
-		DEFAULT(csiescseq.arg[0], 1);
-		tmoveto(csiescseq.arg[0]-1, term.c.y);
-		break;
-	case 'H': /* CUP -- Move to <row> <col> */
-	case 'f': /* HVP */
-		DEFAULT(csiescseq.arg[0], 1);
-		DEFAULT(csiescseq.arg[1], 1);
-		tmoveato(csiescseq.arg[1]-1, csiescseq.arg[0]-1);
-		break;
-	case 'I': /* CHT -- Cursor Forward Tabulation <n> tab stops */
-		DEFAULT(csiescseq.arg[0], 1);
-		tputtab(csiescseq.arg[0]);
-		break;
-	case 'J': /* ED -- Clear screen */
-		selclear(NULL);
-		switch (csiescseq.arg[0]) {
-		case 0: /* below */
-			tclearregion(term.c.x, term.c.y, term.col-1, term.c.y);
-			if (term.c.y < term.row-1) {
-				tclearregion(0, term.c.y+1, term.col-1,
-						term.row-1);
+		unknown:
+			fprintf(stderr, "erresc: unknown csi ");
+			csidump();
+			/* die(""); */
+			break;
+		case '@': /* ICH -- Insert <n> blank char */
+			DEFAULT(csiescseq.arg[0], 1);
+			tinsertblank(csiescseq.arg[0]);
+			break;
+		case 'A': /* CUU -- Cursor <n> Up */
+			DEFAULT(csiescseq.arg[0], 1);
+			tmoveto(term.c.x, term.c.y-csiescseq.arg[0]);
+			break;
+		case 'B': /* CUD -- Cursor <n> Down */
+		case 'e': /* VPR --Cursor <n> Down */
+			DEFAULT(csiescseq.arg[0], 1);
+			tmoveto(term.c.x, term.c.y+csiescseq.arg[0]);
+			break;
+		case 'i': /* MC -- Media Copy */
+			switch (csiescseq.arg[0]) {
+			case 0:
+				tdump();
+				break;
+			case 1:
+				tdumpline(term.c.y);
+				break;
+			case 2:
+				tdumpsel();
+				break;
+			case 4:
+				term.mode &= ~MODE_PRINT;
+				break;
+			case 5:
+				term.mode |= MODE_PRINT;
+				break;
 			}
 			break;
-		case 1: /* above */
-			if (term.c.y > 1)
-				tclearregion(0, 0, term.col-1, term.c.y-1);
-			tclearregion(0, term.c.y, term.c.x, term.c.y);
+		case 'c': /* DA -- Device Attributes */
+			if (csiescseq.arg[0] == 0)
+				ttywrite(vtiden, sizeof(vtiden) - 1);
 			break;
-		case 2: /* all */
-			tclearregion(0, 0, term.col-1, term.row-1);
-			break;
-		default:
-			goto unknown;
-		}
-		break;
-	case 'K': /* EL -- Clear line */
-		switch (csiescseq.arg[0]) {
-		case 0: /* right */
-			tclearregion(term.c.x, term.c.y, term.col-1,
-					term.c.y);
-			break;
-		case 1: /* left */
-			tclearregion(0, term.c.y, term.c.x, term.c.y);
-			break;
-		case 2: /* all */
-			tclearregion(0, term.c.y, term.col-1, term.c.y);
-			break;
-		}
-		break;
-	case 'S': /* SU -- Scroll <n> line up */
-		DEFAULT(csiescseq.arg[0], 1);
-		tscrollup(term.top, csiescseq.arg[0]);
-		break;
-	case 'T': /* SD -- Scroll <n> line down */
-		DEFAULT(csiescseq.arg[0], 1);
-		tscrolldown(term.top, csiescseq.arg[0]);
-		break;
-	case 'L': /* IL -- Insert <n> blank lines */
-		DEFAULT(csiescseq.arg[0], 1);
-		tinsertblankline(csiescseq.arg[0]);
-		break;
-	case 'l': /* RM -- Reset Mode */
-		tsetmode(csiescseq.priv, 0, csiescseq.arg, csiescseq.narg);
-		break;
-	case 'M': /* DL -- Delete <n> lines */
-		DEFAULT(csiescseq.arg[0], 1);
-		tdeleteline(csiescseq.arg[0]);
-		break;
-	case 'X': /* ECH -- Erase <n> char */
-		DEFAULT(csiescseq.arg[0], 1);
-		tclearregion(term.c.x, term.c.y,
-				term.c.x + csiescseq.arg[0] - 1, term.c.y);
-		break;
-	case 'P': /* DCH -- Delete <n> char */
-		DEFAULT(csiescseq.arg[0], 1);
-		tdeletechar(csiescseq.arg[0]);
-		break;
-	case 'Z': /* CBT -- Cursor Backward Tabulation <n> tab stops */
-		DEFAULT(csiescseq.arg[0], 1);
-		tputtab(-csiescseq.arg[0]);
-		break;
-	case 'd': /* VPA -- Move to <row> */
-		DEFAULT(csiescseq.arg[0], 1);
-		tmoveato(term.c.x, csiescseq.arg[0]-1);
-		break;
-	case 'h': /* SM -- Set terminal mode */
-		tsetmode(csiescseq.priv, 1, csiescseq.arg, csiescseq.narg);
-		break;
-	case 'm': /* SGR -- Terminal attribute (color) */
-		tsetattr(csiescseq.arg, csiescseq.narg);
-		break;
-	case 'n': /* DSR – Device Status Report (cursor position) */
-		if (csiescseq.arg[0] == 6) {
-			len = snprintf(buf, sizeof(buf),"\033[%i;%iR",
-					term.c.y+1, term.c.x+1);
-			ttywrite(buf, len);
-		}
-		break;
-	case 'r': /* DECSTBM -- Set Scrolling Region */
-		if (csiescseq.priv) {
-			goto unknown;
-		} else {
+		case 'C': /* CUF -- Cursor <n> Forward */
+		case 'a': /* HPR -- Cursor <n> Forward */
 			DEFAULT(csiescseq.arg[0], 1);
-			DEFAULT(csiescseq.arg[1], term.row);
-			tsetscroll(csiescseq.arg[0]-1, csiescseq.arg[1]-1);
-			tmoveato(0, 0);
-		}
-		break;
-	case 's': /* DECSC -- Save cursor position (ANSI.SYS) */
-		tcursor(CURSOR_SAVE);
-		break;
-	case 'u': /* DECRC -- Restore cursor position (ANSI.SYS) */
-		tcursor(CURSOR_LOAD);
-		break;
-	case ' ':
-		switch (csiescseq.mode[1]) {
-		case 'q': /* DECSCUSR -- Set Cursor Style */
+			tmoveto(term.c.x+csiescseq.arg[0], term.c.y);
+			break;
+		case 'D': /* CUB -- Cursor <n> Backward */
 			DEFAULT(csiescseq.arg[0], 1);
-			if (!BETWEEN(csiescseq.arg[0], 0, 7)) {
+			tmoveto(term.c.x-csiescseq.arg[0], term.c.y);
+			break;
+		case 'E': /* CNL -- Cursor <n> Down and first col */
+			DEFAULT(csiescseq.arg[0], 1);
+			tmoveto(0, term.c.y+csiescseq.arg[0]);
+			break;
+		case 'F': /* CPL -- Cursor <n> Up and first col */
+			DEFAULT(csiescseq.arg[0], 1);
+			tmoveto(0, term.c.y-csiescseq.arg[0]);
+			break;
+		case 'g': /* TBC -- Tabulation clear */
+			switch (csiescseq.arg[0]) {
+			case 0: /* clear current tab stop */
+				term.tabs[term.c.x] = 0;
+				break;
+			case 3: /* clear all the tabs */
+				memset(term.tabs, 0, term.col * sizeof(*term.tabs));
+				break;
+			default:
 				goto unknown;
 			}
-			xw.cursor = csiescseq.arg[0];
 			break;
-		default:
-			goto unknown;
+		case 'G': /* CHA -- Move to <col> */
+		case '`': /* HPA */
+			DEFAULT(csiescseq.arg[0], 1);
+			tmoveto(csiescseq.arg[0]-1, term.c.y);
+			break;
+		case 'H': /* CUP -- Move to <row> <col> */
+		case 'f': /* HVP */
+			DEFAULT(csiescseq.arg[0], 1);
+			DEFAULT(csiescseq.arg[1], 1);
+			tmoveato(csiescseq.arg[1]-1, csiescseq.arg[0]-1);
+			break;
+		case 'I': /* CHT -- Cursor Forward Tabulation <n> tab stops */
+			DEFAULT(csiescseq.arg[0], 1);
+			tputtab(csiescseq.arg[0]);
+			break;
+		case 'J': /* ED -- Clear screen */
+			selclear(NULL);
+			switch (csiescseq.arg[0]) {
+			case 0: /* below */
+				tclearregion(term.c.x, term.c.y, term.col-1, term.c.y);
+				if (term.c.y < term.row-1) {
+					tclearregion(0, term.c.y+1, term.col-1,
+							term.row-1);
+				}
+				break;
+			case 1: /* above */
+				if (term.c.y > 1)
+					tclearregion(0, 0, term.col-1, term.c.y-1);
+				tclearregion(0, term.c.y, term.c.x, term.c.y);
+				break;
+			case 2: /* all */
+				tclearregion(0, 0, term.col-1, term.row-1);
+				break;
+			default:
+				goto unknown;
+			}
+			break;
+		case 'K': /* EL -- Clear line */
+			switch (csiescseq.arg[0]) {
+			case 0: /* right */
+				tclearregion(term.c.x, term.c.y, term.col-1,
+						term.c.y);
+				break;
+			case 1: /* left */
+				tclearregion(0, term.c.y, term.c.x, term.c.y);
+				break;
+			case 2: /* all */
+				tclearregion(0, term.c.y, term.col-1, term.c.y);
+				break;
+			}
+			break;
+		case 'S': /* SU -- Scroll <n> line up */
+			DEFAULT(csiescseq.arg[0], 1);
+			tscrollup(term.top, csiescseq.arg[0]);
+			break;
+		case 'T': /* SD -- Scroll <n> line down */
+			DEFAULT(csiescseq.arg[0], 1);
+			tscrolldown(term.top, csiescseq.arg[0]);
+			break;
+		case 'L': /* IL -- Insert <n> blank lines */
+			DEFAULT(csiescseq.arg[0], 1);
+			tinsertblankline(csiescseq.arg[0]);
+			break;
+		case 'l': /* RM -- Reset Mode */
+			tsetmode(csiescseq.interm, 0, csiescseq.arg, csiescseq.narg);
+			break;
+		case 'M': /* DL -- Delete <n> lines */
+			DEFAULT(csiescseq.arg[0], 1);
+			tdeleteline(csiescseq.arg[0]);
+			break;
+		case 'X': /* ECH -- Erase <n> char */
+			DEFAULT(csiescseq.arg[0], 1);
+			tclearregion(term.c.x, term.c.y,
+					term.c.x + csiescseq.arg[0] - 1, term.c.y);
+			break;
+		case 'P': /* DCH -- Delete <n> char */
+			DEFAULT(csiescseq.arg[0], 1);
+			tdeletechar(csiescseq.arg[0]);
+			break;
+		case 'Z': /* CBT -- Cursor Backward Tabulation <n> tab stops */
+			DEFAULT(csiescseq.arg[0], 1);
+			tputtab(-csiescseq.arg[0]);
+			break;
+		case 'd': /* VPA -- Move to <row> */
+			DEFAULT(csiescseq.arg[0], 1);
+			tmoveato(term.c.x, csiescseq.arg[0]-1);
+			break;
+		case 'h': /* SM -- Set terminal mode */
+			tsetmode(csiescseq.interm, 1, csiescseq.arg, csiescseq.narg);
+			break;
+		case 'm': /* SGR -- Terminal attribute (color) */
+			tsetattr(csiescseq.arg, csiescseq.narg);
+			break;
+		case 'n': /* DSR – Device Status Report (cursor position) */
+			if (csiescseq.arg[0] == 6) {
+				len = snprintf(buf, sizeof(buf),"\033[%i;%iR",
+						term.c.y+1, term.c.x+1);
+				ttywrite(buf, len);
+			}
+			break;
+		case 'r': /* DECSTBM -- Set Scrolling Region */
+			if (csiescseq.interm) {
+				goto unknown;
+			} else {
+				DEFAULT(csiescseq.arg[0], 1);
+				DEFAULT(csiescseq.arg[1], term.row);
+				tsetscroll(csiescseq.arg[0]-1, csiescseq.arg[1]-1);
+				tmoveato(0, 0);
+			}
+			break;
+		case 's': /* DECSC -- Save cursor position (ANSI.SYS) */
+			tcursor(CURSOR_SAVE);
+			break;
+		case 'u': /* DECRC -- Restore cursor position (ANSI.SYS) */
+			tcursor(CURSOR_LOAD);
+			break;
+		case ' ':
+			switch (csiescseq.mode[1]) {
+			case 'q': /* DECSCUSR -- Set Cursor Style */
+				DEFAULT(csiescseq.arg[0], 1);
+				if (!BETWEEN(csiescseq.arg[0], 0, 7)) {
+					goto unknown;
+				}
+				xw.cursor = csiescseq.arg[0];
+				break;
+			default:
+				goto unknown;
+			}
+			break;
 		}
 		break;
+	case '>':
+		switch (csiescseq.mode[0]) {
+		case 'c': /* Send device attributes (secondary DA) */
+			if (csiescseq.arg[0] == 0)
+				ttywrite(vtiden2, sizeof(vtiden2) - 1);
+			break;
+		case 'm': /* Set/reset modify keys (IGNORED) */
+		case 'n': /* Disable modify keys (IGNORED) */
+			break;
+		default:
+			fprintf(stderr, "erresc: unknown csi ");
+			csidump();
+			break;
+		}
+		break;
+	}
+}
+
+void
+chardump(char c)
+{
+	if (isprint(c)) {
+		putc(c, stderr);
+	} else if (c == '\n') {
+		fprintf(stderr, "\\n");
+	} else if (c == '\r') {
+		fprintf(stderr, "\\r");
+	} else if (c == 0x1b) {
+		fprintf(stderr, "\\e");
+	} else {
+		fprintf(stderr, "\\x%02x", c);
 	}
 }
 
@@ -2596,22 +2638,10 @@ void
 csidump(void)
 {
 	int i;
-	uint c;
 
-	fprintf(stderr, "ESC[");
+	fprintf(stderr, "\\e[");
 	for (i = 0; i < csiescseq.len; i++) {
-		c = csiescseq.buf[i] & 0xff;
-		if (isprint(c)) {
-			putc(c, stderr);
-		} else if (c == '\n') {
-			fprintf(stderr, "(\\n)");
-		} else if (c == '\r') {
-			fprintf(stderr, "(\\r)");
-		} else if (c == 0x1b) {
-			fprintf(stderr, "(\\e)");
-		} else {
-			fprintf(stderr, "(%02x)", c);
-		}
+		chardump(csiescseq.buf[i] & 0xff);
 	}
 	putc('\n', stderr);
 }
@@ -2747,16 +2777,8 @@ strdump(void)
 		if (c == '\0') {
 			putc('\n', stderr);
 			return;
-		} else if (isprint(c)) {
-			putc(c, stderr);
-		} else if (c == '\n') {
-			fprintf(stderr, "(\\n)");
-		} else if (c == '\r') {
-			fprintf(stderr, "(\\r)");
-		} else if (c == 0x1b) {
-			fprintf(stderr, "(\\e)");
 		} else {
-			fprintf(stderr, "(%02x)", c);
+			chardump(c);
 		}
 	}
 	fprintf(stderr, "ESC\\\n");
@@ -3124,6 +3146,8 @@ eschandle(uchar ascii)
 		xresettitle();
 		xloadcols();
 		break;
+	case 'g': /* Visual bell (IGNORED) */
+		break;
 	case '=': /* DECPAM -- Application keypad */
 		term.mode |= MODE_APPKEYPAD;
 		break;
@@ -3141,8 +3165,9 @@ eschandle(uchar ascii)
 			strhandle();
 		break;
 	default:
-		fprintf(stderr, "erresc: unknown sequence ESC 0x%02X '%c'\n",
-			(uchar) ascii, isprint(ascii)? ascii:'.');
+		fprintf(stderr, "erresc: unknown sequence ESC ");
+		chardump(ascii);
+		putc('\n', stderr);
 		break;
 	}
 	return 1;
