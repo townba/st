@@ -182,7 +182,6 @@ static const Shortcut shortcuts[] = {
 	{ ControlShiftMask,     XK_L,           iso14755,       {.i =  0} },
 	{ ControlShiftMask,     XK_V,           clippaste,      {.i =  0} },
 	{ ControlMod1ShiftMask, XK_V,           selpaste,       {.i =  0} },
-	{ ControlMod1ShiftMask, XK_Num_Lock,    numlock,        {.i =  0} },
 };
 
 /*
@@ -194,7 +193,6 @@ static const Shortcut shortcuts[] = {
  * appkey value:
  * * 0: no value
  * * > 0: keypad application mode enabled
- * *   = 2: term.numlock = 1
  * * < 0: keypad application mode disabled
  * appcursor value:
  * * 0: no value
@@ -282,25 +280,25 @@ static const Key key[] = {
 	{ XK_KP_Delete,     ShiftMask,      "\033[3;2~",    +1,    0,    0},
 	{ XK_KP_Delete,     XK_ANY_MOD,     "\033[P",       -1,    0,    0},
 	{ XK_KP_Delete,     XK_ANY_MOD,     "\033[3~",      +1,    0,    0},
-	{ XK_KP_Multiply,   XK_ANY_MOD,     "\033Oj",       +2,    0,    0},
-	{ XK_KP_Add,        XK_ANY_MOD,     "\033Ok",       +2,    0,    0},
-	{ XK_KP_Enter,      XK_ANY_MOD,     "\033OM",       +2,    0,    0},
+	{ XK_KP_Multiply,   XK_ANY_MOD,     "\033Oj",       +1,    0,    0},
+	{ XK_KP_Add,        XK_ANY_MOD,     "\033Ok",       +1,    0,    0},
+	{ XK_KP_Enter,      XK_ANY_MOD,     "\033OM",       +1,    0,    0},
 	{ XK_KP_Enter,      XK_ANY_MOD,     "\r",           -1,    0,   -1},
 	{ XK_KP_Enter,      XK_ANY_MOD,     "\r\n",         -1,    0,   +1},
 	{ XK_KP_Enter,      XK_ANY_MOD,     "\033OM",       +1,    0,    0},
-	{ XK_KP_Subtract,   XK_ANY_MOD,     "\033Om",       +2,    0,    0},
-	{ XK_KP_Decimal,    XK_ANY_MOD,     "\033[3~",      +2,    0,    0},
-	{ XK_KP_Divide,     XK_ANY_MOD,     "\033Oo",       +2,    0,    0},
-	{ XK_KP_0,          XK_ANY_MOD,     "\033[2~",      +2,    0,    0},
-	{ XK_KP_1,          XK_ANY_MOD,     "\033OF",       +2,    0,    0},
-	{ XK_KP_2,          XK_ANY_MOD,     "\033[B",       +2,    0,    0},
-	{ XK_KP_3,          XK_ANY_MOD,     "\033[6~",      +2,    0,    0},
-	{ XK_KP_4,          XK_ANY_MOD,     "\033[D",       +2,    0,    0},
-	{ XK_KP_5,          XK_ANY_MOD,     "\033[E",       +2,    0,    0},
-	{ XK_KP_6,          XK_ANY_MOD,     "\033[C",       +2,    0,    0},
-	{ XK_KP_7,          XK_ANY_MOD,     "\033OH",       +2,    0,    0},
-	{ XK_KP_8,          XK_ANY_MOD,     "\033[A",       +2,    0,    0},
-	{ XK_KP_9,          XK_ANY_MOD,     "\033[5~",      +2,    0,    0},
+	{ XK_KP_Subtract,   XK_ANY_MOD,     "\033Om",       +1,    0,    0},
+	{ XK_KP_Decimal,    XK_ANY_MOD,     "\033[3~",      +1,    0,    0},
+	{ XK_KP_Divide,     XK_ANY_MOD,     "\033Oo",       +1,    0,    0},
+	{ XK_KP_0,          XK_ANY_MOD,     "\033[2~",      +1,    0,    0},
+	{ XK_KP_1,          XK_ANY_MOD,     "\033OF",       +1,    0,    0},
+	{ XK_KP_2,          XK_ANY_MOD,     "\033[B",       +1,    0,    0},
+	{ XK_KP_3,          XK_ANY_MOD,     "\033[6~",      +1,    0,    0},
+	{ XK_KP_4,          XK_ANY_MOD,     "\033[D",       +1,    0,    0},
+	{ XK_KP_5,          XK_ANY_MOD,     "\033[E",       +1,    0,    0},
+	{ XK_KP_6,          XK_ANY_MOD,     "\033[C",       +1,    0,    0},
+	{ XK_KP_7,          XK_ANY_MOD,     "\033OH",       +1,    0,    0},
+	{ XK_KP_8,          XK_ANY_MOD,     "\033[A",       +1,    0,    0},
+	{ XK_KP_9,          XK_ANY_MOD,     "\033[5~",      +1,    0,    0},
 	{ XK_Up,            ShiftMask,      "\033[1;2A",     0,    0,    0},
 	{ XK_Up,            Mod1Mask,       "\033[1;3A",     0,    0,    0},
 	{ XK_Up,            Mod1Mask|ShiftMask,             "\033[1;4A",     0,    0,    0},

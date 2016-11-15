@@ -256,7 +256,6 @@ typedef struct {
 	char trantbl[4]; /* charset table translation */
 	int charset;  /* current charset */
 	int icharset; /* selected charset for sequence */
-	int numlock;  /* lock numbers in keyboard */
 	int *tabs;
 } Term;
 
@@ -339,7 +338,6 @@ typedef struct {
 /* function definitions used in config.h */
 static void clipcopy(const Arg *);
 static void clippaste(const Arg *);
-static void numlock(const Arg *);
 static void selpaste(const Arg *);
 static void xzoom(const Arg *);
 static void xzoomabs(const Arg *);
@@ -1808,7 +1806,6 @@ tnew(int col, int row)
 {
 	term = (Term){ .c = { .attr = { .fg = defaultfg, .bg = defaultbg } } };
 	tresize(col, row);
-	term.numlock = 1;
 
 	treset();
 }
@@ -4442,12 +4439,6 @@ match(uint mask, uint state)
 	return mask == XK_ANY_MOD || mask == (state & ~ignoremod);
 }
 
-void
-numlock(const Arg *dummy)
-{
-	term.numlock ^= 1;
-}
-
 const char*
 kmap(KeySym k, uint state)
 {
@@ -4472,8 +4463,6 @@ kmap(KeySym k, uint state)
 			continue;
 
 		if (IS_SET(MODE_APPKEYPAD) ? kp->appkey < 0 : kp->appkey > 0)
-			continue;
-		if (term.numlock && kp->appkey == 2)
 			continue;
 
 		if (IS_SET(MODE_APPCURSOR) ? kp->appcursor < 0 : kp->appcursor > 0)
