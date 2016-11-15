@@ -2284,6 +2284,9 @@ tsetmode(int priv, int set, const int *args, int narg)
 			case 25: /* DECTCEM -- Text Cursor Enable Mode */
 				MODBIT(term.mode, !set, MODE_HIDE);
 				break;
+			case 66: /* DECNKM -- Numeric Keypad Mode */
+				MODBIT(term.mode, set, MODE_APPKEYPAD);
+				break;
 			case 9:    /* X10 mouse compatibility mode */
 				xsetpointermotion(0);
 				MODBIT(term.mode, 0, MODE_MOUSE);
