@@ -2352,9 +2352,16 @@ tsetmode(char interm, int set, const int *args, int narg)
 			case 1015: /* urxvt mangled mouse mode; incompatible
 				      and can be mistaken for other control
 				      codes. */
+				if (!set)
+					break;
+				fprintf(stderr,
+					"erresc: mouse mode %d not supported\n",
+					*args);
+				break;
 			default:
 				fprintf(stderr,
-					"erresc: unknown private set/reset mode %d\n",
+					"erresc: unknown private %s mode %d\n",
+					set ? "set" : "reset",
 					*args);
 				break;
 			}
