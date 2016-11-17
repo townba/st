@@ -2778,7 +2778,7 @@ strdump(void)
 	int i;
 	uint c;
 
-	fprintf(stderr, "ESC%c", strescseq.type);
+	fprintf(stderr, "\\e%c", strescseq.type);
 	for (i = 0; i < strescseq.len; i++) {
 		c = strescseq.buf[i] & 0xff;
 		if (c == '\0') {
@@ -2788,7 +2788,7 @@ strdump(void)
 			chardump(c);
 		}
 	}
-	fprintf(stderr, "ESC\\\n");
+	fprintf(stderr, "\\e\\\n");
 }
 
 void
