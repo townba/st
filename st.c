@@ -3813,6 +3813,7 @@ xinit(int argc, char *argv[])
 		{"-display",	".display",	XrmoptionSepArg,	NULL},
 		{"-xrm",	NULL,		XrmoptionResArg,	NULL},
 	};
+	unsigned int startcols = cols, startrows = rows;
 
 	XrmInitialize();
 
@@ -3840,7 +3841,7 @@ xinit(int argc, char *argv[])
 	opt_font = xgetresstr(maindb, "st.font", "St.Font", NULL);
 	xw.l = xw.t = 0;
 	xw.gm = XParseGeometry(xgetresstr(maindb, "st.geometry", "St.Geometry", NULL),
-			&xw.l, &xw.t, &cols, &rows);
+			&xw.l, &xw.t, &startcols, &startrows);
 	xw.isfixed = xgetresbool(maindb, "st.fixedGeometry", "St.FixedGeometry", False);
 	opt_io = xgetresstr(maindb, "st.outputFile", "St.OutputFile", NULL);
 	opt_line = xgetresstr(maindb, "st.line", "St.Line", NULL);
@@ -3860,7 +3861,7 @@ xinit(int argc, char *argv[])
 			opt_cmd = (const char**)(argv);
 	}
 
-	tnew(MAX(cols, 1), MAX(rows, 1));
+	tnew(MAX(startcols, 1), MAX(startrows, 1));
 
 	xw.scr = XDefaultScreen(xw.dpy);
 	xw.vis = XDefaultVisual(xw.dpy, xw.scr);
