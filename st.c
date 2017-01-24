@@ -58,7 +58,7 @@ const char *argv0;
 /* Arbitrary sizes */
 #define UTF_INVALID   0xFFFD
 #define UTF_SIZ       4
-#define ESC_BUF_SIZ   (128*UTF_SIZ)
+#define ESC_BUF_SIZ   (16384*UTF_SIZ)
 #define ESC_ARG_SIZ   16
 #define STR_BUF_SIZ   ESC_BUF_SIZ
 #define STR_ARG_SIZ   ESC_ARG_SIZ
