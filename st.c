@@ -3559,16 +3559,32 @@ xgeommasktogravity(int mask)
 int
 xloadfont(Font *f, const FcPattern *pattern)
 {
+	FcPattern *configured;
 	FcPattern *match;
 	FcResult result;
 	XGlyphInfo extents;
 	int wantattr, haveattr;
 
-	match = XftFontMatch(xw.dpy, xw.scr, pattern, &result);
-	if (!match)
+	/*
+	 * Manually configure instead of calling XftMatchFont
+	 * so that we can use the configured pattern for
+	 * "missing glyph" lookups.
+	 */
+	configured = FcPatternDuplicate(pattern);
+	if (!configured)
 		return 1;
 
+	FcConfigSubstitute(NULL, configured, FcMatchPattern);
+	XftDefaultSubstitute(xw.dpy, xw.scr, configured);
+
+	match = FcFontMatch(NULL, configured, &result);
+	if (!match) {
+		FcPatternDestroy(configured);
+		return 1;
+	}
+
 	if (!(f->match = XftFontOpenPattern(xw.dpy, match))) {
+		FcPatternDestroy(configured);
 		FcPatternDestroy(match);
 		return 1;
 	}
@@ -3600,7 +3616,7 @@ xloadfont(Font *f, const FcPattern *pattern)
 		strlen(ascii_printable), &extents);
 
 	f->set = NULL;
-	f->pattern = FcPatternDuplicate(pattern);
+	f->pattern = configured;
 
 	f->ascent = f->match->ascent;
 	f->descent = f->match->descent;
@@ -3657,9 +3673,6 @@ xloadfonts(const char *fontstr, double fontsize)
 	if (usedfontsize < 0) {
 		FcPatternGetDouble(dc.font.match->pattern,
 		                   FC_PIXEL_SIZE, 0, &fontval);
-		FcPatternAddDouble(pattern, FC_PIXEL_SIZE, fontval);
-		if (xloadfont(&dc.font, pattern))
-			die("st: can't open font %s\n", fontstr);
 		usedfontsize = fontval;
 		if (fontsize == 0)
 			defaultfontsize = fontval;
@@ -3800,7 +3813,6 @@ xinit(int argc, char *argv[])
 		{"-display",	".display",	XrmoptionSepArg,	NULL},
 		{"-xrm",	NULL,		XrmoptionResArg,	NULL},
 	};
-	uint cols = startcols, rows = startrows;
 
 	XrmInitialize();
 
