@@ -602,7 +602,7 @@ typedef struct {
 static Fontcache frc[16];
 static int frclen = 0;
 
-#ifdef __APPLE__
+#ifndef CLOCK_MONOTONIC
 #define CLOCK_MONOTONIC 1
 static int clock_gettime(int clk_id, struct timespec *ts)
 {
