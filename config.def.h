@@ -8,10 +8,6 @@
 static const char font[] = "Liberation Mono:pixelsize=12:antialias=true:autohint=true";
 static const int borderpx = 2;
 
-/* Initial number of columns and rows. */
-static const ushort startcols = 80;
-static const ushort startrows = 24;
-
 /*
  * What program is execed by st depends of these precedence rules:
  * 1: program passed with -e
@@ -136,6 +132,13 @@ static const unsigned int defaultrcs = 257;
  * 7: Snowman ("☃")
  */
 static const unsigned int cursorshape = 2;
+
+/*
+ * Default columns and rows numbers
+ */
+
+static const unsigned int cols = 80;
+static const unsigned int rows = 24;
 
 /*
  * Default colour and shape of the mouse cursor
