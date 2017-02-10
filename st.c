@@ -63,7 +63,6 @@ const char *argv0;
 #define STR_BUF_SIZ ESC_BUF_SIZ
 #define STR_ARG_SIZ ESC_ARG_SIZ
 #define XK_ANY_MOD UINT_MAX
-#define XK_NO_MOD 0
 #define XK_SWITCH_MOD (1 << 13)
 
 /* macros */
@@ -223,7 +222,7 @@ typedef struct {
 /* ESC '[' [[ [<interm>] <arg> [;]] <mode> [<mode>]] */
 typedef struct {
 	char buf[ESC_BUF_SIZ]; /* raw string */
-	int len;               /* raw string length */
+	size_t len;            /* raw string length */
 	char interm;
 	int arg[ESC_ARG_SIZ];
 	int narg; /* nb of args */
@@ -451,6 +450,7 @@ static const char *xgetresstr(XrmDatabase, const char *, const char *,
                               const char *);
 static Bool xgetresbool(XrmDatabase, const char *, const char *, Bool);
 static void xinit(int argc, char *argv[]);
+static int xloadcolor(int, const char *, Color *);
 static void xloadcols(void);
 static int xsetcolorname(int, const char *);
 static int xgeommasktogravity(int);
@@ -606,7 +606,7 @@ typedef struct {
 
 /* Fontcache is an array now. A new font will be appended to the array. */
 static Fontcache frc[16];
-static int frclen = 0;
+static size_t frclen = 0;
 
 #ifndef CLOCK_MONOTONIC
 #define CLOCK_MONOTONIC 1
@@ -978,7 +978,7 @@ selsnap(int *x, int *y, int direction)
 void
 getbuttoninfo(const XEvent *e)
 {
-	int type;
+	size_t type;
 	uint state = e->xbutton.state & ~(Button1Mask | forceselmod);
 
 	sel.alt = IS_SET(MODE_ALTSCREEN);
@@ -1659,7 +1659,7 @@ ttywrite(const char *s, size_t n)
 			 */
 			if ((r = write(cmdfd, s, (n < lim) ? n : lim)) < 0)
 				goto write_error;
-			if (r < n) {
+			if ((size_t)(r) < n) {
 				/*
 				 * We weren't able to write out everything.
 				 * This means the buffer is getting full
@@ -2667,7 +2667,7 @@ chardump(char c)
 void
 csidump(void)
 {
-	int i;
+	size_t i;
 
 	fprintf(stderr, "\\e[");
 	for (i = 0; i < csiescseq.len; i++) {
@@ -3213,7 +3213,8 @@ tputc(Rune u)
 {
 	char c[UTF_SIZ];
 	int control;
-	int width = 0, len;
+	int width = 0;
+	size_t len;
 	Glyph *gp;
 
 	control = ISCONTROL(u);
@@ -3487,7 +3488,7 @@ xloadcolor(int i, const char *name, Color *ncolor)
 void
 xloadcols(void)
 {
-	int i;
+	size_t i;
 	static int loaded;
 	Color *cp;
 
@@ -3512,7 +3513,7 @@ xsetcolorname(int x, const char *name)
 {
 	Color ncolor;
 
-	if (!BETWEEN(x, 0, LEN(dc.col)))
+	if (x < 0 || !BETWEEN((size_t)(x), 0, LEN(dc.col)))
 		return 1;
 
 	if (!xloadcolor(x, name, &ncolor))
@@ -4014,7 +4015,8 @@ xmakeglyphfontspecs(XftGlyphFontSpec *specs, const Glyph *glyphs, int len,
 	FcPattern *fcpattern, *fontpattern;
 	FcFontSet *fcsets[] = {NULL};
 	FcCharSet *fccharset;
-	int i, f, numspecs = 0;
+	int i, numspecs = 0;
+	size_t f;
 
 	for (i = 0, xp = winx, yp = winy + font->ascent; i < len; ++i) {
 		/* Fetch rune and mode for current glyph. */
@@ -4516,7 +4518,7 @@ const char *
 kmap(KeySym k, uint state)
 {
 	const Key *kp;
-	int i;
+	size_t i;
 
 	/* Check for mapped keys out of X11 function keys. */
 	for (i = 0; i < LEN(mappedkeys); i++) {
@@ -4613,7 +4615,7 @@ cmessage(XEvent *e)
 		} else if (e->xclient.data.l[1] == XEMBED_FOCUS_OUT) {
 			xw.state &= ~WIN_FOCUSED;
 		}
-	} else if (e->xclient.data.l[0] == xw.wmdeletewin) {
+	} else if ((Atom)(e->xclient.data.l[0]) == xw.wmdeletewin) {
 		/* Send SIGHUP to shell */
 		kill(pid, SIGHUP);
 		exit_with_code = 0;
