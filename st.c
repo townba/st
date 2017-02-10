@@ -73,7 +73,7 @@ const char *argv0;
 #define DEFAULT(a, b) (a) = (a) ? (a) : (b)
 #define BETWEEN(x, a, b) ((a) <= (x) && (x) <= (b))
 #define DIVCEIL(n, d) (((n) + ((d)-1)) / (d))
-#define ISCONTROLC0(c) (BETWEEN(c, 0, 0x1f) || (c) == '\177')
+#define ISCONTROLC0(c) (BETWEEN(c, 0, 0x1f) || (c) == 0x7F)
 #define ISCONTROLC1(c) (BETWEEN(c, 0x80, 0x9f))
 #define ISCONTROL(c) (ISCONTROLC0(c) || ISCONTROLC1(c))
 #define ISDELIM(u) (utf8strchr(worddelimiters, u) != NULL)
@@ -1047,11 +1047,11 @@ mousereport(const XEvent *e)
 	}
 
 	if (IS_SET(MODE_MOUSESGR)) {
-		len = snprintf(buf, sizeof(buf), "\033[<%d;%d;%d%c", button,
+		len = snprintf(buf, sizeof(buf), "\x1B[<%d;%d;%d%c", button,
 		               x + 1, y + 1,
 		               e->xbutton.type == ButtonRelease ? 'm' : 'M');
 	} else if (x < 223 && y < 223) {
-		len = snprintf(buf, sizeof(buf), "\033[M%c%c%c", 32 + button,
+		len = snprintf(buf, sizeof(buf), "\x1B[M%c%c%c", 32 + button,
 		               32 + x + 1, 32 + y + 1);
 	} else {
 		return;
@@ -1253,10 +1253,10 @@ selnotify(XEvent *e)
 		}
 
 		if (IS_SET(MODE_BRCKTPASTE) && ofs == 0)
-			ttywrite("\033[200~", 6);
+			ttywrite("\x1B[200~", 6);
 		ttysend((const char *)data, nitems * format / 8);
 		if (IS_SET(MODE_BRCKTPASTE) && rem == 0)
-			ttywrite("\033[201~", 6);
+			ttywrite("\x1B[201~", 6);
 		XFree(data);
 		/* number of 32-bit chunks returned */
 		ofs += nitems * format / 32;
@@ -1524,7 +1524,7 @@ stty(void)
 		q += n;
 		siz -= n + 1;
 	}
-	*q = '\0';
+	*q = 0;
 	if (system(cmd) != 0)
 		perror("Couldn't call stty");
 }
@@ -1929,7 +1929,7 @@ csiparse(void)
 		p++;
 	}
 
-	csiescseq.buf[csiescseq.len] = '\0';
+	csiescseq.buf[csiescseq.len] = 0;
 	while (p < csiescseq.buf + csiescseq.len) {
 		np = NULL;
 		v = strtol(p, &np, 10);
@@ -1944,7 +1944,7 @@ csiparse(void)
 		p++;
 	}
 	csiescseq.mode[0] = *p++;
-	csiescseq.mode[1] = (p < csiescseq.buf + csiescseq.len) ? *p : '\0';
+	csiescseq.mode[1] = (p < csiescseq.buf + csiescseq.len) ? *p : 0;
 }
 
 /* for absolute user moves, when decom is set */
@@ -2593,7 +2593,7 @@ csihandle(void)
 			break;
 		case 'n': /* DSR – Device Status Report (cursor position) */
 			if (csiescseq.arg[0] == 6) {
-				len = snprintf(buf, sizeof(buf), "\033[%i;%iR",
+				len = snprintf(buf, sizeof(buf), "\x1B[%i;%iR",
 				               term.c.y + 1, term.c.x + 1);
 				ttywrite(buf, len);
 			}
@@ -2737,7 +2737,7 @@ strhandle(void)
 				buflen = strlen(c) + 8;
 				buf = (char *)xmalloc(buflen);
 				buflen =
-				    snprintf(buf, buflen, "\033]52;%s;\\", c);
+				    snprintf(buf, buflen, "\x1B]52;%s;\\", c);
 				ttywrite(buf, buflen);
 				free(buf);
 				return;
@@ -2785,18 +2785,18 @@ strparse(void)
 	char *p = strescseq.buf;
 
 	strescseq.narg = 0;
-	strescseq.buf[strescseq.len] = '\0';
+	strescseq.buf[strescseq.len] = 0;
 
-	if (*p == '\0')
+	if (*p == 0)
 		return;
 
 	while (strescseq.narg < STR_ARG_SIZ) {
 		strescseq.args[strescseq.narg++] = p;
-		while ((c = *p) != ';' && c != '\0')
+		while ((c = *p) != ';' && c != 0)
 			++p;
-		if (c == '\0')
+		if (c == 0)
 			return;
-		*p++ = '\0';
+		*p++ = 0;
 	}
 }
 
@@ -2809,7 +2809,7 @@ strdump(void)
 	fprintf(stderr, "\\e%c", strescseq.type);
 	for (i = 0; i < strescseq.len; i++) {
 		c = strescseq.buf[i] & 0xff;
-		if (c == '\0') {
+		if (c == 0) {
 			putc('\n', stderr);
 			return;
 		} else {
@@ -2864,10 +2864,10 @@ iso14755(const Arg *arg)
 	us = fgets(codepoint, sizeof(codepoint), p);
 	pclose(p);
 
-	if (!us || *us == '\0' || *us == '-' || strlen(us) > 7)
+	if (!us || *us == 0 || *us == '-' || strlen(us) > 7)
 		return;
 	if ((utf32 = strtoul(us, &e, 16)) == ULONG_MAX ||
-	    (*e != '\n' && *e != '\0'))
+	    (*e != '\n' && *e != 0))
 		return;
 
 	ttysend(uc, utf8encode(utf32, uc));
@@ -3049,25 +3049,25 @@ tcontrolcode(uchar ascii)
 				XkbBell(xw.dpy, xw.win, bellvolume, (Atom)NULL);
 		}
 		break;
-	case '\033': /* ESC */
+	case 0x1B: /* ESC */
 		csireset();
 		term.esc &= ~(ESC_CSI | ESC_ALTCHARSET | ESC_TEST);
 		term.esc |= ESC_START;
 		return;
-	case '\016': /* SO (LS1 -- Locking shift 1) */
-	case '\017': /* SI (LS0 -- Locking shift 0) */
-		term.charset = 1 - (ascii - '\016');
+	case 0x0E: /* SO (LS1 -- Locking shift 1) */
+	case 0x0F: /* SI (LS0 -- Locking shift 0) */
+		term.charset = 1 - (ascii - 0x0E);
 		return;
-	case '\032': /* SUB */
+	case 0x1A: /* SUB */
 		tsetchar('?', &term.c.attr, term.c.x, term.c.y);
-	case '\030': /* CAN */
+	case 0x18: /* CAN */
 		csireset();
 		break;
-	case '\005': /* ENQ (IGNORED) */
-	case '\000': /* NUL (IGNORED) */
-	case '\021': /* XON (IGNORED) */
-	case '\023': /* XOFF (IGNORED) */
-	case 0177:   /* DEL (IGNORED) */
+	case 0x05: /* ENQ (IGNORED) */
+	case 0x00: /* NUL (IGNORED) */
+	case 0x11: /* XON (IGNORED) */
+	case 0x13: /* XOFF (IGNORED) */
+	case 0x7F: /* DEL (IGNORED) */
 		return;
 	case 0x80: /* TODO: PAD */
 	case 0x81: /* TODO: HOP */
@@ -3224,7 +3224,7 @@ tputc(Rune u)
 	} else {
 		len = utf8encode(u, c);
 		if (!control && (width = wcwidth(u)) == -1) {
-			memcpy(c, "\357\277\275", 4); /* UTF_INVALID */
+			memcpy(c, "\xEF\xBF\xBD", 4); /* UTF_INVALID */
 			width = 1;
 		}
 	}
@@ -3239,7 +3239,7 @@ tputc(Rune u)
 	 * character.
 	 */
 	if (term.esc & ESC_STR) {
-		if (u == '\a' || u == 030 || u == 032 || u == 033 ||
+		if (u == '\a' || u == 0x18 || u == 0x1A || u == 0x1B ||
 		    ISCONTROLC1(u)) {
 			term.esc &= ~(ESC_START | ESC_STR | ESC_DCS);
 			if (IS_SET(MODE_SIXEL)) {
@@ -3344,7 +3344,7 @@ check_control_code:
 	if (width == 2) {
 		gp->mode |= ATTR_WIDE;
 		if (term.c.x + 1 < term.col) {
-			gp[1].u = '\0';
+			gp[1].u = 0;
 			gp[1].mode = ATTR_WDUMMY;
 		}
 	}
@@ -4499,12 +4499,12 @@ focus(XEvent *ev)
 		xw.state |= WIN_FOCUSED;
 		xseturgency(0);
 		if (IS_SET(MODE_FOCUS))
-			ttywrite("\033[I", 3);
+			ttywrite("\x1B[I", 3);
 	} else {
 		XUnsetICFocus(xw.xic);
 		xw.state &= ~WIN_FOCUSED;
 		if (IS_SET(MODE_FOCUS))
-			ttywrite("\033[O", 3);
+			ttywrite("\x1B[O", 3);
 	}
 }
 
@@ -4588,13 +4588,13 @@ kpress(XEvent *ev)
 		return;
 	if (len == 1 && e->state & Mod1Mask) {
 		if (IS_SET(MODE_8BIT)) {
-			if (*buf < 0177) {
+			if (*buf < 0x7F) {
 				c = *buf | 0x80;
 				len = utf8encode(c, buf);
 			}
 		} else {
 			buf[1] = buf[0];
-			buf[0] = '\033';
+			buf[0] = 0x1B;
 			len = 2;
 		}
 	}
