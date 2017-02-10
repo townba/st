@@ -20,6 +20,9 @@ static const char shell[] = "/bin/sh";
 static const char *utmp = NULL;
 static const char stty_args[] = "stty raw pass8 nl -echo -iexten -cstopb 38400";
 
+/* The command executed for entering Unicode code points. */
+static const char iso14755_cmd[] = "dmenu -p 'Unicode code point in hexadecimal:' < /dev/null";
+
 /* identification sequence returned in DA and DECID */
 static const char vtiden[] = "\033[?6c";
 

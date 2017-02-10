@@ -103,7 +103,6 @@ const char *argv0;
 #define TRUERED(x) (((x)&0xff0000) >> 8)
 #define TRUEGREEN(x) (((x)&0xff00))
 #define TRUEBLUE(x) (((x)&0xff) << 8)
-#define ISO14755CMD "dmenu -p 'Unicode code point:' < /dev/null"
 #define XA_CLIPBOARD XInternAtom(xw.dpy, "CLIPBOARD", 0)
 
 enum glyph_attribute {
@@ -2973,7 +2972,7 @@ tprinter(const char *s, size_t len)
 void
 iso14755(UNUSED int unused)
 {
-	FILE *p = popen(ISO14755CMD, "r");
+	FILE *p = popen(iso14755_cmd, "r");
 	if (!p) {
 		return;
 	}
