@@ -9,6 +9,7 @@
 #include <X11/keysym.h>
 #include <ctype.h>
 #include <errno.h>
+#include <execinfo.h>
 #include <fcntl.h>
 #include <fontconfig/fontconfig.h>
 #include <libgen.h>
@@ -379,7 +380,8 @@ static void redraw(void);
 static void drawregion(int, int, int, int);
 static void execsh(void);
 static void stty(void);
-static void sigchld(int);
+static void sigchld_handler(int);
+static void sigsegv_handler(int);
 static int run(void);
 
 static void chardump(char c);
@@ -1488,7 +1490,7 @@ execsh(void)
 }
 
 void
-sigchld(int a)
+sigchld_handler(int sig)
 {
 	int stat;
 	pid_t p;
@@ -1502,6 +1504,17 @@ sigchld(int a)
 	if (!WIFEXITED(stat) || WEXITSTATUS(stat))
 		die("child finished with error '%d'\n", stat);
 	exit_with_code = 0;
+}
+
+void
+sigsegv_handler(int sig)
+{
+	void *stack_entries[16];
+	int size = backtrace(stack_entries, LEN(stack_entries));
+
+	fprintf(stderr, "Exiting due to signal %d\nStack:\n", sig);
+	backtrace_symbols_fd(stack_entries, size, STDERR_FILENO);
+	exit(1);
 }
 
 void
@@ -1577,7 +1590,7 @@ ttynew(void)
 	default:
 		close(s);
 		cmdfd = m;
-		signal(SIGCHLD, sigchld);
+		signal(SIGCHLD, sigchld_handler);
 		break;
 	}
 }
@@ -4777,6 +4790,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
+	signal(SIGSEGV, sigsegv_handler);
 	argv0 = xstrdup(basename(argv[0]));
 
 	xw.l = xw.t = 0;
