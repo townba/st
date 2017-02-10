@@ -12,7 +12,7 @@ config.h : config.def.h
 st.o : config.h
 
 clean:
-	rm -f st st.o st-${VERSION}.tar.gz
+	rm -f st st.bc st.i st.o st.s st-${VERSION}.tar.gz
 
 debug: CPPFLAGS += -g -O0
 debug: LDFLAGS += -g

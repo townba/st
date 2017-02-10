@@ -37,4 +37,3 @@ CLANG_TIDY_CHECKS = *,-clang-analyzer-alpha*,-cert-env33-c
 CLANG_TIDY_EXECUTABLE = $(shell brew --prefix)/opt/llvm/bin/clang-tidy
 CLANG_TIDY_FLAGS = \
 	-I$(shell xcode-select --print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk/usr/include
-
