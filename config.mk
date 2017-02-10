@@ -23,7 +23,6 @@ CPPFLAGS += -DVERSION=\"${VERSION}\" -D_XOPEN_SOURCE=600 \
        -Wall -Wextra -Wpedantic  -Wno-missing-field-initializers \
        -Wmissing-prototypes \
        -Wno-variadic-macros -Wunused-macros \
-       -Wno-unused-parameter \
        -I. -I/usr/include -I${X11INC} \
        `pkg-config --cflags fontconfig` \
        `pkg-config --cflags freetype2`

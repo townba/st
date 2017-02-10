@@ -39,6 +39,14 @@
 #include <mach/mach.h>
 #endif
 
+#ifdef __GNUC__
+#define NORETURN __attribute__((noreturn))
+#define UNUSED __attribute__((unused))
+#else
+#define NORETURN
+#define UNUSED
+#endif
+
 const char *argv0;
 
 #define Glyph Glyph_
@@ -374,7 +382,7 @@ typedef struct {
 	GC gc;
 } DC;
 
-static void die(const char *, ...);
+NORETURN static void die(const char *, ...);
 static void draw(void);
 static void redraw(void);
 static void drawregion(int, int, int, int);
@@ -1271,14 +1279,14 @@ selnotify(XEvent *e)
 }
 
 void
-selpaste(const Arg *dummy)
+selpaste(UNUSED const Arg *unused)
 {
 	XConvertSelection(xw.dpy, XA_PRIMARY, sel.xtarget, XA_PRIMARY, xw.win,
 	                  CurrentTime);
 }
 
 void
-clipcopy(const Arg *dummy)
+clipcopy(UNUSED const Arg *unused)
 {
 	if (sel.clipboard != NULL)
 		free(sel.clipboard);
@@ -1290,14 +1298,14 @@ clipcopy(const Arg *dummy)
 }
 
 void
-clippaste(const Arg *dummy)
+clippaste(UNUSED const Arg *unused)
 {
 	XConvertSelection(xw.dpy, XA_CLIPBOARD, sel.xtarget, XA_CLIPBOARD,
 	                  xw.win, CurrentTime);
 }
 
 void
-selclear(XEvent *e)
+selclear(UNUSED XEvent *unused)
 {
 	if (sel.ob.x == -1)
 		return;
@@ -1428,7 +1436,7 @@ bmotion(XEvent *e)
 		tsetdirt(MIN(sel.nb.y, oldsby), MAX(sel.ne.y, oldsey));
 }
 
-void
+NORETURN void
 die(const char *errstr, ...)
 {
 	va_list ap;
@@ -1489,7 +1497,7 @@ execsh(void)
 }
 
 void
-sigchld_handler(int sig)
+sigchld_handler(UNUSED int unused)
 {
 	int stat;
 	pid_t p;
@@ -2837,14 +2845,14 @@ strreset(void)
 }
 
 void
-sendbreak(const Arg *arg)
+sendbreak(UNUSED const Arg *unused)
 {
 	if (tcsendbreak(cmdfd, 0))
 		perror("Error sending break");
 }
 
 void
-reset(const Arg *arg)
+reset(UNUSED const Arg *unused)
 {
 	treset();
 }
@@ -2861,7 +2869,7 @@ tprinter(const char *s, size_t len)
 }
 
 void
-iso14755(const Arg *arg)
+iso14755(UNUSED const Arg *unused)
 {
 	char cmd[sizeof(ISO14755CMD) + NUMMAXLEN(xw.win)];
 	FILE *p;
@@ -2885,19 +2893,19 @@ iso14755(const Arg *arg)
 }
 
 void
-toggleprinter(const Arg *arg)
+toggleprinter(UNUSED const Arg *unused)
 {
 	term.mode ^= MODE_PRINT;
 }
 
 void
-printscreen(const Arg *arg)
+printscreen(UNUSED const Arg *unused)
 {
 	tdump();
 }
 
 void
-printsel(const Arg *arg)
+printsel(UNUSED const Arg *unused)
 {
 	tdumpsel();
 }
@@ -3780,7 +3788,7 @@ xzoomabs(const Arg *arg)
 }
 
 void
-xzoomreset(const Arg *arg)
+xzoomreset(UNUSED const Arg *unused)
 {
 	Arg larg;
 
@@ -4453,7 +4461,7 @@ drawregion(int x1, int y1, int x2, int y2)
 }
 
 void
-expose(XEvent *ev)
+expose(UNUSED XEvent *unused)
 {
 	redraw();
 }
@@ -4467,7 +4475,7 @@ visibility(XEvent *ev)
 }
 
 void
-unmap(XEvent *ev)
+unmap(UNUSED XEvent *unused)
 {
 	xw.state &= ~WIN_VISIBLE;
 }
