@@ -555,6 +555,7 @@ static const char *opt_class = NULL;
 static const char *opt_embed = NULL;
 static const char *opt_font = NULL;
 static const char *opt_io = NULL;
+static const char *opt_iso14755_cmd = NULL;
 static const char *opt_line = NULL;
 static const char *opt_name = NULL;
 static const char *opt_title = NULL;
@@ -2972,7 +2973,7 @@ tprinter(const char *s, size_t len)
 void
 iso14755(UNUSED int unused)
 {
-	FILE *p = popen(iso14755_cmd, "r");
+	FILE *p = popen(opt_iso14755_cmd, "r");
 	if (!p) {
 		return;
 	}
@@ -3964,6 +3965,7 @@ xinit(int argc, char *argv[])
 	    {"-o",		".outputFile",	XrmoptionSepArg,	NULL},
 	    {"-T",		".title",	XrmoptionSepArg,	NULL},
 	    {"-t",		".title",	XrmoptionSepArg,	NULL},
+	    {"-U",		".iso14755Command", XrmoptionSepArg,	NULL},
 	    {"-v",		"._v",		XrmoptionNoArg,		"true"},
 	    {"-w",		".embed",	XrmoptionSepArg,	NULL},
 	    {"-display",	".display",	XrmoptionSepArg,	NULL},
@@ -4007,6 +4009,7 @@ xinit(int argc, char *argv[])
 	xw.isfixed =
 	    xgetresbool(maindb, "st.fixedGeometry", "St.FixedGeometry", False);
 	opt_io = xgetresstr(maindb, "st.outputFile", "St.OutputFile", NULL);
+	opt_iso14755_cmd = xgetresstr(maindb, "st.iso14755Command", "St.Iso14755Command", iso14755_cmd);
 	opt_line = xgetresstr(maindb, "st.line", "St.Line", NULL);
 	opt_name = xgetresstr(maindb, "st.name", "St.Name", NULL);
 	opt_title = xgetresstr(maindb, "st.title", "St.Title", argv0);
