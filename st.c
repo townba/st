@@ -34,7 +34,7 @@
 #include <unistd.h>
 #include <wchar.h>
 
-#ifdef __APPLE__
+#if !defined(CLOCK_MONOTONIC) && defined(__MACH__)
 #include <mach/clock.h>
 #include <mach/mach.h>
 #endif
@@ -610,11 +610,12 @@ typedef struct {
 static Fontcache frc[16];
 static size_t frclen = 0;
 
-#ifndef CLOCK_MONOTONIC
+#if !defined(CLOCK_MONOTONIC) && defined(__MACH__)
 #define CLOCK_MONOTONIC 1
 static int
 clock_gettime(int clk_id, struct timespec *ts)
 {
+	assert(clk_id == CLOCK_MONOTONIC);
 	clock_serv_t clock_serv;
 	mach_timespec_t cur_time;
 	if (host_get_clock_service(mach_host_self(), SYSTEM_CLOCK,
