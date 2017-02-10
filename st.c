@@ -66,8 +66,8 @@ const char *argv0;
 
 // Arbitrary sizes
 #define UTF_INVALID 0xFFFD
-#define UTF_SIZ 4
-#define ESC_BUF_SIZ (16384 * UTF_SIZ)
+#define MAX_UTF8_BYTES 4
+#define ESC_BUF_SIZ (16384 * MAX_UTF8_BYTES)
 #define ESC_ARG_SIZ 16
 #define STR_BUF_SIZ ESC_BUF_SIZ
 #define STR_ARG_SIZ ESC_ARG_SIZ
@@ -313,10 +313,10 @@ typedef struct {
 	int snap;
 	/*
 	 * Selection variables:
-	 * nb – normalized coordinates of the beginning of the selection
-	 * ne – normalized coordinates of the end of the selection
-	 * ob – original coordinates of the beginning of the selection
-	 * oe – original coordinates of the end of the selection
+	 * nb - normalized coordinates of the beginning of the selection
+	 * ne - normalized coordinates of the end of the selection
+	 * ob - original coordinates of the beginning of the selection
+	 * oe - original coordinates of the end of the selection
 	 */
 	struct {
 		int x, y;
@@ -580,10 +580,10 @@ static double usedfontsize = 0;
 static double defaultfontsize = 0;
 static int exit_with_code = -1;
 
-static uchar utfbyte[UTF_SIZ + 1] = {0x80, 0, 0xC0, 0xE0, 0xF0};
-static uchar utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
-static Rune utfmin[UTF_SIZ + 1] = {0, 0, 0x80, 0x800, 0x10000};
-static Rune utfmax[UTF_SIZ + 1] = {0x10FFFF, 0x7F, 0x7FF, 0xFFFF, 0x10FFFF};
+static uchar utfbyte[] = {0x80, 0, 0xC0, 0xE0, 0xF0};
+static uchar utfmask[] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
+static Rune utfmin[] = {0, 0, 0x80, 0x800, 0x10000};
+static Rune utfmax[] = {0x10FFFF, 0x7F, 0x7FF, 0xFFFF, 0x10FFFF};
 
 // clang-format off
 static const uchar base64decodetable[] = {
@@ -714,7 +714,7 @@ utf8decode(const char *c, Rune *u, size_t clen)
 		return 0;
 	}
 	udecoded = utf8decodebyte(c[0], &len);
-	if (!BETWEEN(len, 1, UTF_SIZ)) {
+	if (!BETWEEN(len, 1, MAX_UTF8_BYTES)) {
 		return 1;
 	}
 	for (i = 1, j = 1; i < clen && j < len; ++i, ++j) {
@@ -750,7 +750,7 @@ utf8encode(Rune u, char *c)
 	size_t len, i;
 
 	len = utf8validate(&u, 0);
-	if (len > UTF_SIZ) {
+	if (len > MAX_UTF8_BYTES) {
 		return 0;
 	}
 
@@ -1175,7 +1175,7 @@ getsel(void)
 		return NULL;
 	}
 
-	bufsize = (term.col + 1) * (sel.ne.y - sel.nb.y + 1) * UTF_SIZ;
+	bufsize = (term.col + 1) * (sel.ne.y - sel.nb.y + 1) * MAX_UTF8_BYTES;
 	ptr = str = (char *)xmalloc(bufsize);
 
 	// append every set & selected glyph to the selection
@@ -2716,7 +2716,7 @@ csihandle(void)
 		case 'm':  // SGR -- Terminal attribute (color)
 			tsetattr(csiescseq.arg, csiescseq.narg);
 			break;
-		case 'n':  // DSR – Device Status Report (cursor position)
+		case 'n':  // DSR - Device Status Report (cursor position)
 			if (csiescseq.arg[0] == 6) {
 				len = snprintf(buf, sizeof(buf), "\x1B[%i;%iR",
 				               term.c.y + 1, term.c.x + 1);
@@ -2986,7 +2986,7 @@ iso14755(UNUSED const Arg *unused)
 {
 	char cmd[sizeof(ISO14755CMD) + NUMMAXLEN(xw.win)];
 	FILE *p;
-	char *us, *e, codepoint[9], uc[UTF_SIZ];
+	char *us, *e, codepoint[9], uc[MAX_UTF8_BYTES];
 	unsigned long utf32;
 
 	snprintf(cmd, sizeof(cmd), ISO14755CMD, xw.win);
@@ -3040,7 +3040,7 @@ tdumpsel(void)
 void
 tdumpline(int n)
 {
-	char buf[UTF_SIZ];
+	char buf[MAX_UTF8_BYTES];
 	Glyph *bp, *end;
 
 	bp = &term.line[n][0];
@@ -3357,7 +3357,7 @@ eschandle(uchar ascii)
 void
 tputc(Rune u)
 {
-	char c[UTF_SIZ];
+	char c[MAX_UTF8_BYTES];
 	int control;
 	int width = 0;
 	size_t len;
@@ -4508,7 +4508,7 @@ xdrawcursor(void)
 	if (xw.state & WIN_FOCUSED) {
 		switch (xw.cursor) {
 		case 7:  // st extension: snowman
-			utf8decode("☃", &g.u, UTF_SIZ);
+			utf8decode("\xE2\x98\x83", &g.u, 3);
 		case 0:  // Blinking Block
 		case 1:  // Blinking Block (Default)
 		case 2:  // Steady Block
