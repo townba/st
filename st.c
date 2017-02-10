@@ -509,7 +509,7 @@ static int y2row(int /*y*/);
 static void getbuttoninfo(const XEvent * /*e*/);
 static void mousereport(const XEvent * /*e*/);
 
-static size_t utf8decode(const char * /*c*/, Rune * /*u*/, size_t /*clen*/);
+static size_t utf8decode(const char * /*c*/, size_t /*clen*/, Rune * /*u*/);
 static Rune utf8decodebyte(char /*c*/, size_t * /*i*/);
 static size_t utf8encode(Rune /*u*/, char * /*c*/);
 static char utf8encodebyte(Rune /*u*/, size_t /*i*/);
@@ -704,7 +704,7 @@ xstrdup(const char *s)
 }
 
 size_t
-utf8decode(const char *c, Rune *u, size_t clen)
+utf8decode(const char *c, size_t clen, Rune *u)
 {
 	size_t i, j, len, type;
 	Rune udecoded;
@@ -777,7 +777,7 @@ utf8strchr(const char *s, Rune u)
 
 	len = strlen(s);
 	for (i = 0, j = 0; i < len; i += j) {
-		if (!(j = utf8decode(&s[i], &r, len - i))) {
+		if (!(j = utf8decode(&s[i], len - i, &r))) {
 			break;
 		}
 		if (r == u) {
@@ -1694,7 +1694,7 @@ ttyread(void)
 	for (;;) {
 		if (IS_SET(MODE_UTF8)) {
 			// process a complete utf8 char
-			charsize = utf8decode(ptr, &unicodep, buflen);
+			charsize = utf8decode(ptr, buflen, &unicodep);
 			if (charsize == 0) {
 				break;
 			}
@@ -1794,7 +1794,7 @@ ttysend(const char *s, size_t n)
 	lim = &s[n];
 	for (t = s; t < lim; t += len) {
 		if (IS_SET(MODE_UTF8)) {
-			len = utf8decode(t, &u, n);
+			len = utf8decode(t, n, &u);
 		} else {
 			u = *t & 0xFF;
 			len = 1;
@@ -4508,7 +4508,7 @@ xdrawcursor(void)
 	if (xw.state & WIN_FOCUSED) {
 		switch (xw.cursor) {
 		case 7:  // st extension: snowman
-			utf8decode("\xE2\x98\x83", &g.u, 3);
+			utf8decode("\xE2\x98\x83", 3, &g.u);
 		case 0:  // Blinking Block
 		case 1:  // Blinking Block (Default)
 		case 2:  // Steady Block
