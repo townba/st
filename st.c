@@ -39,6 +39,15 @@
 #include <mach/mach.h>
 #endif
 
+// Needed for openpty.
+#if defined(__linux)
+#include <pty.h>
+#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+#include <util.h>
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
+#include <libutil.h>
+#endif
+
 #ifdef __GNUC__
 #define NORETURN __attribute__((noreturn))
 #define UNUSED __attribute__((unused))
@@ -52,19 +61,13 @@ const char *argv0;
 #define Glyph Glyph_
 #define Font Font_
 
-#if defined(__linux)
-#include <pty.h>
-#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-#include <util.h>
-#elif defined(__FreeBSD__) || defined(__DragonFly__)
-#include <libutil.h>
-#endif
-
-// XEMBED messages
+// See the XEmbed Protocol Specification
+// <https://standards.freedesktop.org/xembed-spec/xembed-spec-latest.html> for
+// more info.
 #define XEMBED_FOCUS_IN 4
 #define XEMBED_FOCUS_OUT 5
 
-// Arbitrary sizes
+// Arbitrary sizes.
 #define UTF_INVALID 0xFFFD
 #define MAX_UTF8_BYTES 4
 #define ESC_BUF_SIZ (16384 * MAX_UTF8_BYTES)
@@ -74,11 +77,10 @@ const char *argv0;
 #define XK_ANY_MOD UINT_MAX
 #define XK_SWITCH_MOD (1 << 13)
 
-// macros
+// Macros.
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) < (b) ? (b) : (a))
 #define LEN(a) (sizeof(a) / sizeof(a)[0])
-#define NUMMAXLEN(x) ((int)(sizeof(x) * 2.56 + 0.5) + 1)
 #define DEFAULT(a, b) (a) = (a) ? (a) : (b)
 #define BETWEEN(x, a, b) ((a) <= (x) && (x) <= (b))
 #define DIVCEIL(n, d) (((n) + ((d)-1)) / (d))
@@ -100,9 +102,7 @@ const char *argv0;
 #define TRUERED(x) (((x)&0xff0000) >> 8)
 #define TRUEGREEN(x) (((x)&0xff00))
 #define TRUEBLUE(x) (((x)&0xff) << 8)
-
-// constants
-#define ISO14755CMD "dmenu -w %lu -p codepoint: </dev/null"
+#define ISO14755CMD "dmenu -p 'Unicode code point:' < /dev/null"
 #define XA_CLIPBOARD XInternAtom(xw.dpy, "CLIPBOARD", 0)
 
 enum glyph_attribute {
@@ -2984,27 +2984,23 @@ tprinter(const char *s, size_t len)
 void
 iso14755(UNUSED const Arg *unused)
 {
-	char cmd[sizeof(ISO14755CMD) + NUMMAXLEN(xw.win)];
-	FILE *p;
-	char *us, *e, codepoint[9], uc[MAX_UTF8_BYTES];
-	unsigned long utf32;
-
-	snprintf(cmd, sizeof(cmd), ISO14755CMD, xw.win);
-	if (!(p = popen(cmd, "r"))) {
+	FILE *p = popen(ISO14755CMD, "r");
+	if (!p) {
 		return;
 	}
 
-	us = fgets(codepoint, sizeof(codepoint), p);
+	char codepoint[9];
+	char *us = fgets(codepoint, sizeof(codepoint), p);
 	pclose(p);
 
-	if (!us || *us == 0 || *us == '-' || strlen(us) > 7) {
-		return;
-	}
-	if ((utf32 = strtoul(us, &e, 16)) == ULONG_MAX ||
-	    (*e != '\n' && *e != 0)) {
+	unsigned long utf32 = 0;
+	char *e = 0;
+	if (!us || (utf32 = strtoul(us, &e, 16)) == ULONG_MAX ||
+	    (*e && *e != '\n')) {
 		return;
 	}
 
+	char uc[MAX_UTF8_BYTES];
 	ttysend(uc, utf8encode(utf32, uc));
 }
 
@@ -3071,13 +3067,11 @@ tputtab(int n)
 	if (n > 0) {
 		while (x < term.col && n--) {
 			for (++x; x < term.col && !term.tabs[x]; ++x) {
-				/* nothing */;
 			}
 		}
 	} else if (n < 0) {
 		while (x > 0 && n++) {
 			for (--x; x > 0 && !term.tabs[x]; --x) {
-				/* nothing */;
 			}
 		}
 	}
@@ -3552,7 +3546,6 @@ tresize(int col, int row)
 
 		memset(bp, 0, sizeof(*term.tabs) * (col - term.col));
 		while (--bp > term.tabs && !*bp) {
-			/* nothing */;
 		}
 		for (bp += tabspaces; bp < term.tabs + col; bp += tabspaces) {
 			*bp = 1;
@@ -3618,9 +3611,7 @@ xloadcolor(int i, const char *name, Color *ncolor)
 			return XftColorAllocValue(xw.dpy, xw.vis, xw.cmap,
 			                          &color, ncolor);
 		}
-		{
-			name = colorname[i];
-		}
+		name = colorname[i];
 	}
 
 	return XftColorAllocName(xw.dpy, xw.vis, xw.cmap, name, ncolor);
@@ -3629,7 +3620,6 @@ xloadcolor(int i, const char *name, Color *ncolor)
 void
 xloadcols(void)
 {
-	size_t i;
 	static int loaded;
 	Color *cp;
 
@@ -3639,7 +3629,7 @@ xloadcols(void)
 		}
 	}
 
-	for (i = 0; i < LEN(dc.col); i++) {
+	for (size_t i = 0; i < LEN(dc.col); i++) {
 		if (!xloadcolor(i, NULL, &dc.col[i])) {
 			if (colorname[i]) {
 				die("Could not allocate color '%s'\n",
@@ -4386,7 +4376,7 @@ xdrawglyphfontspecs(const XftGlyphFontSpec *specs, Glyph base, int len, int x,
 		*destfg = &revfg;
 	}
 
-	if (base.mode & ATTR_BLINK && term.mode & MODE_BLINK) {
+	if ((base.mode & ATTR_BLINK) && (term.mode & MODE_BLINK)) {
 		destfg = destbg;
 	}
 
