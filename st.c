@@ -7,6 +7,7 @@
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <execinfo.h>
@@ -159,15 +160,7 @@ enum term_mode {
 	    MODE_MOUSEBTN | MODE_MOUSEMOTION | MODE_MOUSEX10 | MODE_MOUSEMANY,
 };
 
-enum charset {
-	CS_GRAPHIC0,
-	CS_GRAPHIC1,
-	CS_UK,
-	CS_USA,
-	CS_MULTI,
-	CS_GER,
-	CS_FIN
-};
+enum charset { CS_SPECIAL_GRAPHIC, CS_US_ASCII };
 
 enum escape_state {
 	ESC_START = 1,
@@ -261,7 +254,7 @@ typedef struct {
 	int bot;                    // bottom scroll limit
 	int mode;                   // terminal mode flags
 	int esc;                    // escape state flags
-	char trantbl[4];            // charset table translation
+	enum charset trantbl[4];    // charset table translation
 	int charset;                // current charset
 	int icharset;               // selected charset for sequence
 	int *tabs;
@@ -1897,7 +1890,11 @@ treset(void)
 	term.top = 0;
 	term.bot = term.row - 1;
 	term.mode = MODE_WRAP | MODE_UTF8;
-	memset(term.trantbl, CS_USA, sizeof(term.trantbl));
+	assert(LEN(term.trantbl) == 4);
+	term.trantbl[0] = CS_US_ASCII;
+	term.trantbl[1] = CS_US_ASCII;
+	term.trantbl[2] = CS_SPECIAL_GRAPHIC;
+	term.trantbl[3] = CS_SPECIAL_GRAPHIC;
 	term.charset = 0;
 
 	for (i = 0; i < 2; i++) {
@@ -2079,27 +2076,26 @@ tsetchar(Rune u, const Glyph *attr, int x, int y)
 	 * This table is a combination of tables from ncurses and rxvt with some
 	 * minor tweaks.
 	 */
-	const char first_vt100 = '+';
-	// clang-format off
-	static const Rune vt100_0[] = {
-	    0x2192, 0x2190, 0x2191, 0x2193, 0, // +,\-./
-	    0x2588, 0, 0, 0, 0, 0, 0, 0, // 0-7
-	    0, 0, 0, 0, 0, 0, 0, 0, // 89:;<=>?
-	    0, 0x255d, 0x2557, 0x2554, 0x255a, 0x256c, 0x2560, 0x2563, // @A-G
-	    0x2569, 0x2566, 0x251b, 0x2513, 0x250f, 0x2517, 0x254b, 0, // H-O
-	    0, 0x2501, 0x2550, 0x2603, 0x2523, 0x252b, 0x253b, 0x2533, // P-W
-	    0x2503, 0x2551, 0, 0, 0, 0, 0, 0x20, // XYZ[\\]^_
-	    0x25c6, 0x2592, 0x2409, 0x240c, 0x240d, 0x240a, 0xb0, 0xb1, // `a-g
-	    0x25a0, 0x240b, 0x2518, 0x2510, 0x250c, 0x2514, 0x253c, 0x23ba, // h-o
-	    0x23bb, 0x2500, 0x23bc, 0x23bd, 0x251c, 0x2524, 0x2534, 0x252c, // p-w
-	    0x2502, 0x2264, 0x2265, 0x3c0, 0x2260, 0xa3, 0xb7 // x-z{|}~
-	};
-	// clang-format on
+	static const Rune special_graphic[] = {
+	    0,      0,      0,      0,      0,      0,      0,      0,
+	    0,      0,      0,      0x2192, 0x2190, 0x2191, 0x2193, 0,
+	    0x2588, 0,      0,      0,      0,      0,      0,      0,
+	    0,      0,      0,      0,      0,      0,      0,      0,
+	    0,      0x255D, 0x2557, 0x2554, 0x255A, 0x256C, 0x2560, 0x2563,
+	    0x2569, 0x2566, 0x251B, 0x2513, 0x250F, 0x2517, 0x254B, 0,
+	    0,      0x2501, 0x2550, 0x2603, 0x2523, 0x252B, 0x253B, 0x2533,
+	    0x2503, 0x2551, 0,      0,      0,      0,      0,      ' ',
+	    0x25C6, 0x2592, 0x2409, 0x240C, 0x240D, 0x240A, 0xB0,   0xB1,
+	    0x25A0, 0x240B, 0x2518, 0x2510, 0x250C, 0x2514, 0x253C, 0x23BA,
+	    0x23BB, 0x2500, 0x23BC, 0x23BD, 0x251C, 0x2524, 0x2534, 0x252C,
+	    0x2502, 0x2264, 0x2265, 0x3C0,  0x2260, 0xA3,   0xB7,   0};
 
-	if (term.trantbl[term.charset] == CS_GRAPHIC0 &&
-	    BETWEEN(u, first_vt100, first_vt100 + LEN(vt100_0) - 1) &&
-	    vt100_0[u - first_vt100]) {
-		u = vt100_0[u - first_vt100];
+	const Rune *trantbl = NULL;
+	if (term.trantbl[term.charset] == CS_SPECIAL_GRAPHIC) {
+		trantbl = special_graphic;
+	}
+	if (trantbl && BETWEEN(u, ' ', 0x7F) && trantbl[u - ' ']) {
+		u = trantbl[u - ' '];
 	}
 
 	if (term.line[y][x].mode & ATTR_WIDE) {
@@ -3101,7 +3097,7 @@ void
 tdeftran(char ascii)
 {
 	static char cs[] = "0B";
-	static int vcs[] = {CS_GRAPHIC0, CS_USA};
+	static int vcs[] = {CS_SPECIAL_GRAPHIC, CS_US_ASCII};
 	char *p;
 
 	if ((p = strchr(cs, ascii)) == NULL) {
