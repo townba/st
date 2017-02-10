@@ -176,18 +176,18 @@ static const MouseShortcut mshortcuts[] = {
 
 static const Shortcut shortcuts[] = {
 	/* mask                 keysym          function        argument */
-	{ XK_ANY_MOD,           XK_Break,       sendbreak,      {.i =  0} },
-	{ ControlMask,          XK_Print,       toggleprinter,  {.i =  0} },
-	{ ShiftMask,            XK_Print,       printscreen,    {.i =  0} },
-	{ Mod1Mask,             XK_Print,       printsel,       {.i =  0} },
-	{ ControlMask,          XK_equal,       xzoom,          {.f = +1} },
-	{ ControlMask,          XK_minus,       xzoom,          {.f = -1} },
-	{ ControlMask,          XK_0,           xzoomreset,     {.f =  0} },
-	{ ControlShiftMask,     XK_C,           clipcopy,       {.i =  0} },
-	{ ControlShiftMask,     XK_K,           reset,          {.i =  0} },
-	{ ControlShiftMask,     XK_L,           iso14755,       {.i =  0} },
-	{ ControlShiftMask,     XK_V,           clippaste,      {.i =  0} },
-	{ ControlMod1ShiftMask, XK_V,           selpaste,       {.i =  0} },
+	{ XK_ANY_MOD,           XK_Break,       sendbreak,       0 },
+	{ ControlMask,          XK_Print,       toggleprinter,   0 },
+	{ ShiftMask,            XK_Print,       printscreen,     0 },
+	{ Mod1Mask,             XK_Print,       printsel,        0 },
+	{ ControlMask,          XK_equal,       xzoom,          +1 },
+	{ ControlMask,          XK_minus,       xzoom,          -1 },
+	{ ControlMask,          XK_0,           xzoomreset,      0 },
+	{ ControlShiftMask,     XK_C,           clipcopy,        0 },
+	{ ControlShiftMask,     XK_K,           reset,           0 },
+	{ ControlShiftMask,     XK_L,           iso14755,        0 },
+	{ ControlShiftMask,     XK_V,           clippaste,       0 },
+	{ ControlMod1ShiftMask, XK_V,           selpaste,        0 },
 };
 
 /*

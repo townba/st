@@ -329,33 +329,26 @@ typedef struct {
 	struct timespec tclick2;
 } Selection;
 
-typedef union {
-	int i;
-	uint ui;
-	float f;
-	const void *v;
-} Arg;
-
 typedef struct {
 	uint mod;
 	KeySym keysym;
-	void (*func)(const Arg *);
-	const Arg arg;
+	void (*func)(int);
+	int arg;
 } Shortcut;
 
 // function definitions used in config.h
-static void clipcopy(const Arg * /*unused*/);
-static void clippaste(const Arg * /*unused*/);
-static void selpaste(const Arg * /*unused*/);
-static void xzoom(const Arg * /*arg*/);
-static void xzoomabs(const Arg * /*arg*/);
-static void xzoomreset(const Arg * /*unused*/);
-static void printsel(const Arg * /*unused*/);
-static void printscreen(const Arg * /*unused*/);
-static void iso14755(const Arg * /*unused*/);
-static void toggleprinter(const Arg * /*unused*/);
-static void sendbreak(const Arg * /*unused*/);
-static void reset(const Arg * /*unused*/);
+static void clipcopy(int /*unused*/);
+static void clippaste(int /*unused*/);
+static void selpaste(int /*unused*/);
+static void xzoom(int /*arg*/);
+static void xzoomabs(int /*arg*/);
+static void xzoomreset(int /*unused*/);
+static void printsel(int /*unused*/);
+static void printscreen(int /*unused*/);
+static void iso14755(int /*unused*/);
+static void toggleprinter(int /*unused*/);
+static void sendbreak(int /*unused*/);
+static void reset(int /*unused*/);
 
 // Config.h for applying patches and the configuration.
 #include "config.h"
@@ -1329,14 +1322,14 @@ selnotify(XEvent *e)
 }
 
 void
-selpaste(UNUSED const Arg *unused)
+selpaste(UNUSED int unused)
 {
 	XConvertSelection(xw.dpy, XA_PRIMARY, sel.xtarget, XA_PRIMARY, xw.win,
 	                  CurrentTime);
 }
 
 void
-clipcopy(UNUSED const Arg *unused)
+clipcopy(UNUSED int unused)
 {
 	if (sel.clipboard != NULL) {
 		free(sel.clipboard);
@@ -1349,7 +1342,7 @@ clipcopy(UNUSED const Arg *unused)
 }
 
 void
-clippaste(UNUSED const Arg *unused)
+clippaste(UNUSED int unused)
 {
 	XConvertSelection(xw.dpy, XA_CLIPBOARD, sel.xtarget, XA_CLIPBOARD,
 	                  xw.win, CurrentTime);
@@ -1455,7 +1448,7 @@ brelease(XEvent *e)
 	}
 
 	if (e->xbutton.button == Button2) {
-		selpaste(NULL);
+		selpaste(0);
 	} else if (e->xbutton.button == Button1) {
 		if (sel.mode == SEL_READY) {
 			getbuttoninfo(e);
@@ -2957,7 +2950,7 @@ strreset(void)
 }
 
 void
-sendbreak(UNUSED const Arg *unused)
+sendbreak(UNUSED int unused)
 {
 	if (tcsendbreak(cmdfd, 0)) {
 		perror("Error sending break");
@@ -2965,7 +2958,7 @@ sendbreak(UNUSED const Arg *unused)
 }
 
 void
-reset(UNUSED const Arg *unused)
+reset(UNUSED int unused)
 {
 	treset();
 }
@@ -2982,7 +2975,7 @@ tprinter(const char *s, size_t len)
 }
 
 void
-iso14755(UNUSED const Arg *unused)
+iso14755(UNUSED int unused)
 {
 	FILE *p = popen(ISO14755CMD, "r");
 	if (!p) {
@@ -3005,19 +2998,19 @@ iso14755(UNUSED const Arg *unused)
 }
 
 void
-toggleprinter(UNUSED const Arg *unused)
+toggleprinter(UNUSED int unused)
 {
 	term.mode ^= MODE_PRINT;
 }
 
 void
-printscreen(UNUSED const Arg *unused)
+printscreen(UNUSED int unused)
 {
 	tdump();
 }
 
 void
-printsel(UNUSED const Arg *unused)
+printsel(UNUSED int unused)
 {
 	tdumpsel();
 }
@@ -3896,19 +3889,16 @@ xunloadfonts(void)
 }
 
 void
-xzoom(const Arg *arg)
+xzoom(int arg)
 {
-	Arg larg;
-
-	larg.f = usedfontsize + arg->f;
-	xzoomabs(&larg);
+	xzoomabs(usedfontsize + arg);
 }
 
 void
-xzoomabs(const Arg *arg)
+xzoomabs(int arg)
 {
 	xunloadfonts();
-	xloadfonts(usedfont, arg->f);
+	xloadfonts(usedfont, arg);
 	cresize(0, 0);
 	ttyresize();
 	redraw();
@@ -3916,13 +3906,10 @@ xzoomabs(const Arg *arg)
 }
 
 void
-xzoomreset(UNUSED const Arg *unused)
+xzoomreset(UNUSED int unused)
 {
-	Arg larg;
-
 	if (defaultfontsize > 0) {
-		larg.f = defaultfontsize;
-		xzoomabs(&larg);
+		xzoomabs(defaultfontsize);
 	}
 }
 
@@ -4753,7 +4740,7 @@ kpress(XEvent *ev)
 	// 1. shortcuts
 	for (bp = shortcuts; bp < shortcuts + LEN(shortcuts); bp++) {
 		if (ksym == bp->keysym && match(bp->mod, e->state)) {
-			bp->func(&(bp->arg));
+			bp->func(bp->arg);
 			return;
 		}
 	}
