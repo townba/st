@@ -1556,7 +1556,7 @@ ttynew(void)
 
 	if (opt_io) {
 		term.mode |= MODE_PRINT;
-		iofd = (!strcmp(opt_io, "-"))
+		iofd = (strcmp(opt_io, "-") == 0)
 		           ? 1
 		           : open(opt_io, O_WRONLY | O_CREAT, 0666);
 		if (iofd < 0) {
@@ -2747,7 +2747,7 @@ strhandle(void)
 				break;
 			c = strescseq.args[1];
 			p = strescseq.args[2];
-			if (!strcmp(p, "?")) {
+			if (strcmp(p, "?") == 0) {
 				/* Pasting from the clipboard as a result of
 				 * a control sequence is a security risk, so we
 				 * always use an empty string.
@@ -3792,7 +3792,7 @@ xgetresstr(XrmDatabase xrmdb, const char *name, const char *xclass,
 	char *type = NULL;
 	XrmValue value = {0};
 	if (!XrmGetResource(xrmdb, name, xclass, &type, &value) ||
-	    strcmp(type, "String")) {
+	    strcmp(type, "String") != 0) {
 		return def;
 	}
 	return value.addr;
@@ -3804,9 +3804,9 @@ xgetresbool(XrmDatabase xrmdb, const char *name, const char *xclass, Bool def)
 	const char *val = xgetresstr(xrmdb, name, xclass, NULL);
 	if (!val)
 		return def;
-	else if (!strcmp(val, "false"))
+	else if (strcmp(val, "false") == 0)
 		return False;
-	else if (!strcmp(val, "true"))
+	else if (strcmp(val, "true") == 0)
 		return True;
 	else {
 		fprintf(stderr, "unexpected value for %s\n", name);
