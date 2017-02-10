@@ -154,7 +154,6 @@ enum term_mode {
 	MODE_BRCKTPASTE = 1 << 19,
 	MODE_PRINT = 1 << 20,
 	MODE_UTF8 = 1 << 21,
-	MODE_SIXEL = 1 << 22,
 	MODE_MOUSE =
 	    MODE_MOUSEBTN | MODE_MOUSEMOTION | MODE_MOUSEX10 | MODE_MOUSEMANY,
 };
@@ -1623,7 +1622,7 @@ ttyread(void)
 	ptr = buf;
 
 	for (;;) {
-		if (IS_SET(MODE_UTF8) && !IS_SET(MODE_SIXEL)) {
+		if (IS_SET(MODE_UTF8)) {
 			// process a complete utf8 char
 			charsize = utf8decode(ptr, &unicodep, buflen);
 			if (charsize == 0)
@@ -1716,7 +1715,7 @@ ttysend(const char *s, size_t n)
 
 	lim = &s[n];
 	for (t = s; t < lim; t += len) {
-		if (IS_SET(MODE_UTF8) && !IS_SET(MODE_SIXEL)) {
+		if (IS_SET(MODE_UTF8)) {
 			len = utf8decode(t, &u, n);
 		} else {
 			u = *t & 0xFF;
@@ -3237,7 +3236,7 @@ tputc(Rune u)
 	Glyph *gp;
 
 	control = ISCONTROL(u);
-	if (!IS_SET(MODE_UTF8) && !IS_SET(MODE_SIXEL)) {
+	if (!IS_SET(MODE_UTF8)) {
 		c[0] = u;
 		width = len = 1;
 	} else {
@@ -3261,21 +3260,9 @@ tputc(Rune u)
 		if (u == '\a' || u == 0x18 || u == 0x1A || u == 0x1B ||
 		    ISCONTROLC1(u)) {
 			term.esc &= ~(ESC_START | ESC_STR | ESC_DCS);
-			if (IS_SET(MODE_SIXEL)) {
-				/* TODO: render sixel */;
-				term.mode &= ~MODE_SIXEL;
-				return;
-			}
 			term.esc |= ESC_STR_END;
 			goto check_control_code;
 		}
-
-		if (IS_SET(MODE_SIXEL)) {
-			// TODO: implement sixel mode
-			return;
-		}
-		if (term.esc & ESC_DCS && strescseq.len == 0 && u == 'q')
-			term.mode |= MODE_SIXEL;
 
 		if (strescseq.len + len >= sizeof(strescseq.buf) - 1) {
 			/*
