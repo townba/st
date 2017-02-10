@@ -1500,11 +1500,11 @@ void
 sigchld_handler(UNUSED int unused)
 {
 	int stat;
-	pid_t p;
-
-	if ((p = waitpid(pid, &stat, WNOHANG)) < 0)
-		die("Waiting for pid %hd failed: %s\n", pid, strerror(errno));
-
+	pid_t p = waitpid(pid, &stat, WNOHANG);
+	if (p < 0) {
+		die("Waiting for process ID %d failed: %s\n", pid,
+		    strerror(errno));
+	}
 	if (pid != p)
 		return;
 
@@ -1582,7 +1582,7 @@ ttynew(void)
 	case -1:
 		die("fork failed\n");
 		break;
-	case 0:
+	case 0:  // We're the child process.
 		close(iofd);
 		setsid();  // create a new process group
 		dup2(s, 0);
@@ -1594,7 +1594,7 @@ ttynew(void)
 		close(m);
 		execsh();
 		break;
-	default:
+	default:  // We're the parent process.
 		close(s);
 		cmdfd = m;
 		signal(SIGCHLD, sigchld_handler);
