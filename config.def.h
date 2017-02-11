@@ -26,6 +26,9 @@ static const char iso14755_cmd[] = "dmenu -p 'Unicode code point in hexadecimal:
 /* identification sequence returned in DA and DECID */
 static const char vtiden[] = "\033[?6c";
 
+// The response to DA1.
+static const char da1_response[] = "\x1B[?65;1;2;7;9;12;18;19;21;22;23;24;42;44;45;46c";
+
 /* identification sequence returned in secondary DA */
 static const char vtiden2[] = "\033[>41;1;0c";
 

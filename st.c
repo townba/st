@@ -157,7 +157,13 @@ enum term_mode {
 	    MODE_MOUSEBTN | MODE_MOUSEMOTION | MODE_MOUSEX10 | MODE_MOUSEMANY,
 };
 
-enum charset { CS_SPECIAL_GRAPHIC, CS_US_ASCII };
+enum charset {
+	CS_SPECIAL_GRAPHIC,
+	CS_TECHNICAL,
+	CS_US_ASCII,
+	CS_CURSES  // Extension: A special character set to support the Curses
+	           // alternate character set.
+};
 
 enum escape_state {
 	ESC_START = 1,
@@ -2063,23 +2069,56 @@ tsetchar(Rune u, const Glyph *attr, int x, int y)
 	 * This table is a combination of tables from ncurses and rxvt with some
 	 * minor tweaks.
 	 */
-	static const Rune special_graphic[] = {
-	    0,      0,      0,      0,      0,      0,      0,      0,
-	    0,      0,      0,      0x2192, 0x2190, 0x2191, 0x2193, 0,
-	    0x2588, 0,      0,      0,      0,      0,      0,      0,
-	    0,      0,      0,      0,      0,      0,      0,      0,
-	    0,      0x255D, 0x2557, 0x2554, 0x255A, 0x256C, 0x2560, 0x2563,
-	    0x2569, 0x2566, 0x251B, 0x2513, 0x250F, 0x2517, 0x254B, 0,
-	    0,      0x2501, 0x2550, 0x2603, 0x2523, 0x252B, 0x253B, 0x2533,
-	    0x2503, 0x2551, 0,      0,      0,      0,      0,      ' ',
-	    0x25C6, 0x2592, 0x2409, 0x240C, 0x240D, 0x240A, 0xB0,   0xB1,
-	    0x25A0, 0x240B, 0x2518, 0x2510, 0x250C, 0x2514, 0x253C, 0x23BA,
-	    0x23BB, 0x2500, 0x23BC, 0x23BD, 0x251C, 0x2524, 0x2534, 0x252C,
-	    0x2502, 0x2264, 0x2265, 0x3C0,  0x2260, 0xA3,   0xB7,   0};
+	static struct {
+		enum charset charset;
+		const Rune table[96];
+	} charset_to_table[] = {
+	    {CS_SPECIAL_GRAPHIC,
+	     {0,      0,      0,      0,      0,      0,      0,      0,
+	      0,      0,      0,      0,      0,      0,      0,      0,
+	      0,      0,      0,      0,      0,      0,      0,      0,
+	      0,      0,      0,      0,      0,      0,      0,      0,
+	      0,      0,      0,      0,      0,      0,      0,      0,
+	      0,      0,      0,      0,      0,      0,      0,      0,
+	      0,      0,      0,      0,      0,      0,      0,      0,
+	      0,      0,      0,      0,      0,      0,      0,      ' ',
+	      0x25C6, 0x2592, 0x2409, 0x240C, 0x240D, 0x240A, 0xB0,   0xB1,
+	      0x2424, 0x240B, 0x2518, 0x2510, 0x250C, 0x2514, 0x253C, 0x23BA,
+	      0x23BB, 0x2500, 0x23BC, 0x23BD, 0x251C, 0x2524, 0x2534, 0x252C,
+	      0x2502, 0x2264, 0x2265, 0x3C0,  0x2260, 0xA3,   0xB7,   0}},
+	    {CS_TECHNICAL,
+	     {0,      0x23B7, 0x250C, 0x2500, 0x2320, 0x2321, 0x2502, 0x23A1,
+	      0x23A3, 0x23A4, 0x23A6, 0x23A7, 0x23A9, 0x23AB, 0x23AD, 0x23A8,
+	      0x23AC, '<',    '<',    0x2572, 0x2571, '-',    '-',    '>',
+	      0x2426, 0x2426, 0x2426, 0x2426, 0x2264, 0x2260, 0x2265, 0x222B,
+	      0x2234, 0x221D, 0x221E, 0xF7,   0x2206, 0x2207, 0x3A6,  0x393,
+	      0x223C, 0x2243, 0x398,  0xD7,   0x39B,  0x21D4, 0x21D2, 0x2261,
+	      0x3A0,  0x3A8,  0x2426, 0x3A3,  0x2426, 0x2426, 0x221A, 0x3A9,
+	      0x39E,  0x3A5,  0x2282, 0x2283, 0x2229, 0x222A, 0x2227, 0x2228,
+	      0xAC,   0x3B1,  0x3B2,  0x3C7,  0x3B4,  0x3B5,  0x3C6,  0x3B3,
+	      0x3B7,  0x3B9,  0x3B8,  0x3BA,  0x3BB,  0x2426, 0x3BD,  0x2202,
+	      0x3C0,  0x3C8,  0x3C1,  0x3C3,  0x3C4,  0x2426, 0x192,  0x3C9,
+	      0x3BE,  0x3C5,  0x3B6,  0x2190, 0x2191, 0x2192, 0x2193, 0}},
+	    {CS_CURSES,
+	     {0,      ' ',    ' ',    0x25A0, 0xA7,   ' ',    0x2603, ' ',
+	      ' ',    ' ',    ' ',    0x2192, 0x2190, 0x2191, 0x2193, ' ',
+	      0x2588, ' ',    ' ',    ' ',    ' ',    ' ',    ' ',    ' ',
+	      ' ',    ' ',    ' ',    ' ',    0x2591, ' ',    0x2593, ' ',
+	      ' ',    0x255D, 0x2557, 0x2554, 0x255A, 0x256C, 0x2560, 0x2563,
+	      0x2569, 0x2566, 0x251B, 0x2513, 0x250F, 0x2517, 0x254B, ' ',
+	      ' ',    0x2501, 0x2550, ' ',    0x2523, 0x252B, 0x253B, 0x2533,
+	      0x2503, 0x2551, ' ',    ' ',    ' ',    ' ',    ' ',    ' ',
+	      0x25C6, 0x2592, 0x2409, 0x240C, 0x240D, 0x240A, 0xB0,   0xB1,
+	      0x2424, 0x240B, 0x2518, 0x2510, 0x250C, 0x2514, 0x253C, 0x23BA,
+	      0x23BB, 0x2500, 0x23BC, 0x23BD, 0x251C, 0x2524, 0x2534, 0x252C,
+	      0x2502, 0x2264, 0x2265, 0x3C0,  0x2260, 0xA3,   0xB7,   0}},
+	};
 
 	const Rune *trantbl = NULL;
-	if (term.trantbl[term.charset] == CS_SPECIAL_GRAPHIC) {
-		trantbl = special_graphic;
+	for (size_t i = 0; i < LEN(charset_to_table); ++i) {
+		if (term.trantbl[term.charset] == charset_to_table[i].charset) {
+			trantbl = charset_to_table[i].table;
+		}
 	}
 	if (trantbl && BETWEEN(u, ' ', 0x7F) && trantbl[u - ' ']) {
 		u = trantbl[u - ' '];
@@ -2559,7 +2598,7 @@ csihandle(void)
 			break;
 		case 'c':  // DA -- Device Attributes
 			if (csiescseq.arg[0] == 0) {
-				ttywrite(vtiden, sizeof(vtiden) - 1);
+				ttywrite(da1_response, LEN(da1_response) - 1);
 			}
 			break;
 		case 'C':  // CUF -- Cursor <n> Forward
@@ -2873,7 +2912,14 @@ strhandle(void)
 		xsettitle(strescseq.args[0]);
 		return;
 	case 'P':  // DCS -- Device Control String
+		// TODO(townba): This might not be the best place to put this.
+		if (strescseq.len > 0 && strcmp(strescseq.buf, "$q\"p") == 0) {
+			static const char decscl_response[] =
+			    "\x1BP65;1\"p\x1B\\";
+			ttywrite(decscl_response, LEN(decscl_response) - 1);
+		}
 		term.mode |= ESC_DCS;
+		return;
 	case '_':  // APC -- Application Program Command
 	case '^':  // PM -- Privacy Message
 		return;
@@ -3083,8 +3129,9 @@ tdefutf8(char ascii)
 void
 tdeftran(char ascii)
 {
-	static char cs[] = "0B";
-	static int vcs[] = {CS_SPECIAL_GRAPHIC, CS_US_ASCII};
+	static char cs[] = "0>Bc";
+	static int vcs[] = {CS_SPECIAL_GRAPHIC, CS_TECHNICAL, CS_US_ASCII,
+	                    CS_CURSES};
 	char *p;
 
 	if ((p = strchr(cs, ascii)) == NULL) {
