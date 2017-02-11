@@ -57,8 +57,6 @@
 #define UNUSED
 #endif
 
-const char *argv0;
-
 #define Glyph Glyph_
 #define Font Font_
 
@@ -198,7 +196,7 @@ typedef unsigned int uint;
 typedef unsigned long ulong;
 typedef unsigned short ushort;
 
-typedef uint_least32_t Rune;
+typedef uint_least32_t Rune;  // Needs at least 21 bits.
 
 typedef XftDraw *Draw;
 typedef XftColor Color;
@@ -328,6 +326,8 @@ typedef struct {
 	int arg;
 } Shortcut;
 
+const char *argv0;
+
 // function definitions used in config.h
 static void clipcopy(int /*unused*/);
 static void clippaste(int /*unused*/);
@@ -425,7 +425,7 @@ static void tdectest(char /*c*/);
 static void tdefutf8(char /*ascii*/);
 static int32_t tdefcolor(const int * /*attr*/, int * /*npar*/, int /*l*/);
 static void tdeftran(char /*ascii*/);
-static inline int match(uint /*mask*/, uint /*state*/);
+static inline int modifiers_match(uint /*mask*/, uint /*state*/);
 static void ttynew(void);
 static size_t ttyread(void);
 static void ttyresize(void);
@@ -571,26 +571,13 @@ static uchar utfmask[] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
 static Rune utfmin[] = {0, 0, 0x80, 0x800, 0x10000};
 static Rune utfmax[] = {0x10FFFF, 0x7F, 0x7FF, 0xFFFF, 0x10FFFF};
 
-// clang-format off
-static const uchar base64decodetable[] = {
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
-    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 64, 64, 64, 64, 64, 64,
-    64,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
-    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 64, 64, 64, 64, 64,
-    64, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
-};
-// clang-format on
+static const uchar base64decodetable[256] =
+    "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@>@@@?456789:;<=@@@@@@"
+    "@\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E"
+    "\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19@@@@@"
+    "@\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123@@@@@"
+    "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+    "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
 
 // Font Ring Cache
 enum frc_style {
@@ -799,7 +786,7 @@ base64decode(const char *enc, uchar **out, size_t *outlen)
 
 	for (i = 0; i < enclen; ++i) {
 		uchar x = base64decodetable[(uchar)enc[i]];
-		if (x > 63) {
+		if (x >= '@') {
 			break;
 		}
 		switch (i % 4) {
@@ -1022,7 +1009,7 @@ getbuttoninfo(const XEvent *e)
 
 	sel.type = SEL_REGULAR;
 	for (type = 1; type < LEN(selmasks); ++type) {
-		if (match(selmasks[type], state)) {
+		if (modifiers_match(selmasks[type], state)) {
 			sel.type = type;
 			break;
 		}
@@ -1112,7 +1099,7 @@ bpress(XEvent *e)
 
 	for (ms = mshortcuts; ms < mshortcuts + LEN(mshortcuts); ms++) {
 		if (e->xbutton.button == ms->b &&
-		    match(ms->mask, e->xbutton.state)) {
+		    modifiers_match(ms->mask, e->xbutton.state)) {
 			ttysend(ms->s, strlen(ms->s));
 			return;
 		}
@@ -4009,7 +3996,8 @@ xinit(int argc, char *argv[])
 	xw.isfixed =
 	    xgetresbool(maindb, "st.fixedGeometry", "St.FixedGeometry", False);
 	opt_io = xgetresstr(maindb, "st.outputFile", "St.OutputFile", NULL);
-	opt_iso14755_cmd = xgetresstr(maindb, "st.iso14755Command", "St.Iso14755Command", iso14755_cmd);
+	opt_iso14755_cmd = xgetresstr(maindb, "st.iso14755Command",
+	                              "St.Iso14755Command", iso14755_cmd);
 	opt_line = xgetresstr(maindb, "st.line", "St.Line", NULL);
 	opt_name = xgetresstr(maindb, "st.name", "St.Name", NULL);
 	opt_title = xgetresstr(maindb, "st.title", "St.Title", argv0);
@@ -4667,7 +4655,7 @@ focus(XEvent *ev)
 }
 
 int
-match(uint mask, uint state)
+modifiers_match(uint mask, uint state)
 {
 	return mask == XK_ANY_MOD || mask == (state & ~ignoremod);
 }
@@ -4695,7 +4683,7 @@ kmap(KeySym k, uint state)
 			continue;
 		}
 
-		if (!match(kp->mask, state)) {
+		if (!modifiers_match(kp->mask, state)) {
 			continue;
 		}
 
@@ -4737,7 +4725,7 @@ kpress(XEvent *ev)
 	len = XmbLookupString(xw.xic, e, buf, sizeof buf, &ksym, &status);
 	// 1. shortcuts
 	for (bp = shortcuts; bp < shortcuts + LEN(shortcuts); bp++) {
-		if (ksym == bp->keysym && match(bp->mod, e->state)) {
+		if (ksym == bp->keysym && modifiers_match(bp->mod, e->state)) {
 			bp->func(bp->arg);
 			return;
 		}
