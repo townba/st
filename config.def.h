@@ -23,6 +23,9 @@ static const char stty_args[] = "stty raw pass8 nl -echo -iexten -cstopb 38400";
 /* The command executed for entering Unicode code points. */
 static const char iso14755_cmd[] = "dmenu -p 'Unicode code point in hexadecimal:' < /dev/null";
 
+/* Form of C1 controls accepted in UTF-8 mode. */
+static enum c1utf8_form c1utf8_as = 0;
+
 /* identification sequence returned in DA and DECID */
 static const char vtiden[] = "\033[?6c";
 

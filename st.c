@@ -103,6 +103,12 @@
 #define TRUEBLUE(x) (((x)&0xff) << 8)
 #define XA_CLIPBOARD XInternAtom(xw.dpy, "CLIPBOARD", 0)
 
+// Form of C1 controls accepted in UTF-8 mode.
+enum c1utf8_form {
+	C1UTF8_AS_BYTE = 1 << 1,  // Single bytes, e.g. "\x90" for DCS.
+	C1UTF8_AS_UTF8 = 1 << 2,  // UTF-8 sequences, e.g. "\xC2\x90" for DCS.
+};
+
 enum glyph_attribute {
 	ATTR_NULL = 0,
 	ATTR_BOLD = 1 << 0,
@@ -501,7 +507,7 @@ static void getbuttoninfo(const XEvent * /*e*/);
 static void mousereport(const XEvent * /*e*/);
 
 static size_t utf8decode(const char * /*c*/, size_t /*clen*/, Rune * /*u*/);
-static Rune utf8decodebyte(char /*c*/, size_t * /*i*/);
+static Rune utf8decodebyte(uchar /*c*/, size_t * /*i*/);
 static size_t utf8encode(Rune /*u*/, char * /*c*/);
 static char utf8encodebyte(Rune /*u*/, size_t /*i*/);
 static const char *utf8strchr(const char *s, Rune u);
@@ -712,7 +718,7 @@ utf8decode(const char *c, size_t clen, Rune *u)
 }
 
 Rune
-utf8decodebyte(char c, size_t *i)
+utf8decodebyte(uchar c, size_t *i)
 {
 	for (*i = 0; *i < LEN(utfmask); ++(*i)) {
 		if (((uchar)c & utfmask[*i]) == utfbyte[*i]) {
@@ -1672,15 +1678,31 @@ ttyread(void)
 
 	for (;;) {
 		if (IS_SET(MODE_UTF8)) {
-			// process a complete utf8 char
-			charsize = utf8decode(ptr, buflen, &unicodep);
-			if (charsize == 0) {
+			if (buflen == 0) {
 				break;
+			}
+			if ((c1utf8_as & C1UTF8_AS_BYTE) &&
+			    ISCONTROLC1((uchar)(ptr[0]))) {
+				// We aren't able to decode as UTF-8 because
+				// it's actually a control code.
+				unicodep = ptr[0] & 0xFF;
+				charsize = 1;
+			} else {
+				// process a complete utf8 char
+				charsize = utf8decode(ptr, buflen, &unicodep);
+				if (charsize == 0) {
+					break;
+				}
+				if (!(c1utf8_as & C1UTF8_AS_UTF8) &&
+				    ISCONTROLC1(unicodep)) {
+					// We don't accept C1 controls in UTF-8
+					// form.
+					unicodep = UTF_INVALID;
+				}
 			}
 			tputc(unicodep);
 			ptr += charsize;
 			buflen -= charsize;
-
 		} else {
 			if (buflen <= 0) {
 				break;
