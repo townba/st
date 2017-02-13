@@ -7,9 +7,15 @@ include config.mk
 all: debug
 
 config.h : config.def.h
+	clang-format -style=file -i config.def.h
 	cp config.def.h config.h
 
-st.o : config.h
+st.o : st.c config.h
+	clang-format -style=file -i st.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+st : st.o
+	$(CC) $(LDFLAGS) $< $(LOADLIBES) $(LDLIBS) -o $@
 
 clean:
 	rm -f st st.bc st.i st.o st.s st-${VERSION}.tar.gz
@@ -44,6 +50,7 @@ install: all terminfo
 release: CPPFLAGS += -DNDEBUG -O3
 release: CPPFLAGS := $(filter-out -g,$(CPPFLAGS))
 release: st
+	strip st
 
 terminfo: st.info
 	tic -sx st.info
