@@ -67,9 +67,7 @@
 #define XEMBED_FOCUS_OUT 5
 
 // Arbitrary sizes.
-#define UTF_INVALID 0xFFFD
-#define MAX_UTF8_BYTES 4
-#define ESC_BUF_SIZ (16384 * MAX_UTF8_BYTES)
+#define ESC_BUF_SIZ 65536
 #define ESC_ARG_SIZ 16
 #define STR_BUF_SIZ ESC_BUF_SIZ
 #define STR_ARG_SIZ ESC_ARG_SIZ
@@ -209,6 +207,8 @@ typedef unsigned long ulong;
 typedef unsigned short ushort;
 
 typedef uint_least32_t Rune;  // Needs at least 21 bits.
+static const Rune replacement_rune = 0xFFFD;
+static const size_t max_utf8_bytes = 4;
 
 typedef XftDraw *Draw;
 typedef XftColor Color;
@@ -694,12 +694,12 @@ utf8decode(const char *c, size_t clen, Rune *u)
 	size_t i, j, len, type;
 	Rune udecoded;
 
-	*u = UTF_INVALID;
+	*u = replacement_rune;
 	if (!clen) {
 		return 0;
 	}
 	udecoded = utf8decodebyte(c[0], &len);
-	if (!BETWEEN(len, 1, MAX_UTF8_BYTES)) {
+	if (!BETWEEN(len, 1, max_utf8_bytes)) {
 		return 1;
 	}
 	for (i = 1, j = 1; i < clen && j < len; ++i, ++j) {
@@ -735,7 +735,7 @@ utf8encode(Rune u, char *c)
 	size_t len, i;
 
 	len = utf8validate(&u, 0);
-	if (len > MAX_UTF8_BYTES) {
+	if (len > max_utf8_bytes) {
 		return 0;
 	}
 
@@ -777,7 +777,7 @@ size_t
 utf8validate(Rune *u, size_t i)
 {
 	if (!BETWEEN(*u, utfmin[i], utfmax[i]) || BETWEEN(*u, 0xD800, 0xDFFF)) {
-		*u = UTF_INVALID;
+		*u = replacement_rune;
 	}
 	for (i = 1; *u > utfmax[i]; ++i) {
 		;
@@ -1160,7 +1160,7 @@ getsel(void)
 		return NULL;
 	}
 
-	bufsize = (term.col + 1) * (sel.ne.y - sel.nb.y + 1) * MAX_UTF8_BYTES;
+	bufsize = (term.col + 1) * (sel.ne.y - sel.nb.y + 1) * max_utf8_bytes;
 	ptr = str = (char *)xmalloc(bufsize);
 
 	// append every set & selected glyph to the selection
@@ -1697,7 +1697,7 @@ ttyread(void)
 				    ISCONTROLC1(unicodep)) {
 					// We don't accept C1 controls in UTF-8
 					// form.
-					unicodep = UTF_INVALID;
+					unicodep = replacement_rune;
 				}
 			}
 			tputc(unicodep);
@@ -3044,7 +3044,7 @@ iso14755(UNUSED int unused)
 		return;
 	}
 
-	char uc[MAX_UTF8_BYTES];
+	char uc[max_utf8_bytes];
 	ttysend(uc, utf8encode(utf32, uc));
 }
 
@@ -3080,7 +3080,7 @@ tdumpsel(void)
 void
 tdumpline(int n)
 {
-	char buf[MAX_UTF8_BYTES];
+	char buf[max_utf8_bytes];
 	Glyph *bp, *end;
 
 	bp = &term.line[n][0];
@@ -3396,22 +3396,25 @@ eschandle(uchar ascii)
 void
 tputc(Rune u)
 {
-	char c[MAX_UTF8_BYTES];
+	char c[max_utf8_bytes];
 	int control;
 	int width = 0;
 	size_t len;
 	Glyph *gp;
 
 	control = ISCONTROL(u);
-	if (!IS_SET(MODE_UTF8)) {
-		c[0] = u;
-		width = len = 1;
-	} else {
+	if (IS_SET(MODE_UTF8)) {
 		len = utf8encode(u, c);
 		if (!control && (width = wcwidth(u)) == -1) {
-			memcpy(c, "\xEF\xBF\xBD", 4);  // UTF_INVALID
-			width = 1;
+			len = utf8encode(replacement_rune, c);
+			width = wcwidth(u);
+			if (width == -1) {
+				width = 1;
+			}
 		}
+	} else {
+		c[0] = u;
+		width = len = 1;
 	}
 
 	if (IS_SET(MODE_PRINT)) {
