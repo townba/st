@@ -56,6 +56,7 @@ terminfo: st.info
 	tic -sx st.info
 
 tidy:
+	clang-format -style=file -i st.c
 	${CLANG_TIDY_EXECUTABLE} st.c -checks=${CLANG_TIDY_CHECKS} -fix -- \
 	${CPPFLAGS} ${CFLAGS} ${CLANG_TIDY_FLAGS}
 

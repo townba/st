@@ -583,7 +583,7 @@ static uchar utfmask[] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
 static Rune utfmin[] = {0, 0, 0x80, 0x800, 0x10000};
 static Rune utfmax[] = {0x10FFFF, 0x7F, 0x7FF, 0xFFFF, 0x10FFFF};
 
-static const uchar base64decodetable[256] =
+static const uchar base64decode_table[256] =
     "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@>@@@?456789:;<=@@@@@@"
     "@\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E"
     "\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19@@@@@"
@@ -721,8 +721,8 @@ Rune
 utf8decodebyte(uchar c, size_t *i)
 {
 	for (*i = 0; *i < LEN(utfmask); ++(*i)) {
-		if (((uchar)c & utfmask[*i]) == utfbyte[*i]) {
-			return (uchar)c & ~utfmask[*i];
+		if ((c & utfmask[*i]) == utfbyte[*i]) {
+			return c & ~utfmask[*i];
 		}
 	}
 
@@ -762,7 +762,8 @@ utf8strchr(const char *s, Rune u)
 
 	len = strlen(s);
 	for (i = 0, j = 0; i < len; i += j) {
-		if (!(j = utf8decode(&s[i], len - i, &r))) {
+		j = utf8decode(&s[i], len - i, &r);
+		if (!j) {
 			break;
 		}
 		if (r == u) {
@@ -780,7 +781,6 @@ utf8validate(Rune *u, size_t i)
 		*u = replacement_rune;
 	}
 	for (i = 1; *u > utfmax[i]; ++i) {
-		;
 	}
 
 	return i;
@@ -797,7 +797,7 @@ base64decode(const char *enc, uchar **out, size_t *outlen)
 	*outlen = 0;
 
 	for (i = 0; i < enclen; ++i) {
-		uchar x = base64decodetable[(uchar)enc[i]];
+		uchar x = base64decode_table[(uchar)enc[i]];
 		if (x >= '@') {
 			break;
 		}
@@ -1186,7 +1186,6 @@ getsel(void)
 			if (gp->mode & ATTR_WDUMMY) {
 				continue;
 			}
-
 			ptr += utf8encode(gp->u, ptr);
 		}
 
@@ -1227,14 +1226,14 @@ propnotify(XEvent *e)
 void
 selnotify(XEvent *e)
 {
-	ulong nitems, ofs, rem;
-	int format;
-	uchar *data, *last, *repl;
-	Atom type, incratom, property;
+	ulong nitems_return, long_offset, bytes_after_return;
+	int actual_format_return;
+	uchar *prop_return, *last, *repl;
+	Atom actual_type_return, incratom, property;
 
 	incratom = XInternAtom(xw.dpy, "INCR", 0);
 
-	ofs = 0;
+	long_offset = 0;
 	if (e->type == SelectionNotify) {
 		property = e->xselection.property;
 	} else if (e->type == PropertyNotify) {
@@ -1247,14 +1246,17 @@ selnotify(XEvent *e)
 	}
 
 	do {
-		if (XGetWindowProperty(xw.dpy, xw.win, property, ofs,
+		if (XGetWindowProperty(xw.dpy, xw.win, property, long_offset,
 		                       BUFSIZ / 4, False, AnyPropertyType,
-		                       &type, &format, &nitems, &rem, &data)) {
+		                       &actual_type_return,
+		                       &actual_format_return, &nitems_return,
+		                       &bytes_after_return, &prop_return)) {
 			fprintf(stderr, "Clipboard allocation failed\n");
 			return;
 		}
 
-		if (e->type == PropertyNotify && nitems == 0 && rem == 0) {
+		if (e->type == PropertyNotify && nitems_return == 0 &&
+		    bytes_after_return == 0) {
 			/*
 			 * If there is some PropertyNotify with no data, then
 			 * this is the signal of the selection owner that all
@@ -1266,7 +1268,7 @@ selnotify(XEvent *e)
 			                        &xw.attrs);
 		}
 
-		if (type == incratom) {
+		if (actual_type_return == incratom) {
 			/*
 			 * Activate the PropertyNotify events so we receive
 			 * when the selection owner does send us the next
@@ -1277,7 +1279,7 @@ selnotify(XEvent *e)
 			                        &xw.attrs);
 
 			// Deleting the property is the transfer start signal.
-			XDeleteProperty(xw.dpy, xw.win, (int)property);
+			XDeleteProperty(xw.dpy, xw.win, property);
 			continue;
 		}
 
@@ -1288,23 +1290,24 @@ selnotify(XEvent *e)
 		 * replace all '\n' with '\r'.
 		 * FIXME: Fix the computer world.
 		 */
-		repl = data;
-		last = data + nitems * format / 8;
+		repl = prop_return;
+		last = prop_return + nitems_return * actual_format_return / 8;
 		while ((repl = (uchar *)memchr(repl, '\n', last - repl))) {
 			*repl++ = '\r';
 		}
 
-		if (IS_SET(MODE_BRCKTPASTE) && ofs == 0) {
+		if (IS_SET(MODE_BRCKTPASTE) && long_offset == 0) {
 			ttywrite("\x1B[200~", 6);
 		}
-		ttysend((const char *)data, nitems * format / 8);
-		if (IS_SET(MODE_BRCKTPASTE) && rem == 0) {
+		ttysend((const char *)prop_return,
+		        nitems_return * actual_format_return / 8);
+		if (IS_SET(MODE_BRCKTPASTE) && bytes_after_return == 0) {
 			ttywrite("\x1B[201~", 6);
 		}
-		XFree(data);
+		XFree(prop_return);
 		// number of 32-bit chunks returned
-		ofs += nitems * format / 32;
-	} while (rem > 0);
+		long_offset += nitems_return * actual_format_return / 32;
+	} while (bytes_after_return > 0);
 
 	/*
 	 * Deleting the property again tells the selection owner to send the
