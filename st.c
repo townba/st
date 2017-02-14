@@ -344,8 +344,8 @@ const char *argv0;
 static void clipcopy(int /*unused*/);
 static void clippaste(int /*unused*/);
 static void selpaste(int /*unused*/);
-static void xzoom(int /*arg*/);
-static void xzoomabs(int /*arg*/);
+static void xzoom(int /*increase*/);
+static void xzoomabs(int /*fontsize*/);
 static void xzoomreset(int /*unused*/);
 static void printsel(int /*unused*/);
 static void printscreen(int /*unused*/);
@@ -385,8 +385,8 @@ static void redraw(void);
 static void drawregion(int /*x1*/, int /*y1*/, int /*x2*/, int /*y2*/);
 static void execsh(void);
 static void stty(void);
-static void sigchld_handler(int /*unused*/);
-static void sigsegv_handler(int /*sig*/);
+static void sigchld_handler(UNUSED int /*unused*/);
+static void sigsegv_handler(UNUSED int /*sig*/);
 static int run(void);
 
 static void chardump(char c);
@@ -406,7 +406,7 @@ static void tdumpsel(void);
 static void tdumpline(int /*n*/);
 static void tdump(void);
 static void tclearregion(int /*x1*/, int /*y1*/, int /*x2*/, int /*y2*/);
-static void tcursor(int /*mode*/);
+static void tcursor(enum cursor_movement /*mode*/);
 static void tdeletechar(int /*n*/);
 static void tdeleteline(int /*n*/);
 static void tinsertblank(int /*n*/);
@@ -605,7 +605,7 @@ typedef struct {
 	Rune unicodep;
 } Fontcache;
 
-// Fontcache is an array now. A new font will be appended to the array.
+// New fonts will be appended to the array.
 static Fontcache frc[16];
 static size_t frclen = 0;
 
@@ -1876,7 +1876,7 @@ tfulldirt(void)
 }
 
 void
-tcursor(int mode)
+tcursor(enum cursor_movement mode)
 {
 	static TCursor c[2];
 	int alt = IS_SET(MODE_ALTSCREEN);
@@ -2089,10 +2089,6 @@ tmoveto(int x, int y)
 void
 tsetchar(Rune u, const Glyph *attr, int x, int y)
 {
-	/*
-	 * This table is a combination of tables from ncurses and rxvt with some
-	 * minor tweaks.
-	 */
 	static struct {
 		enum charset charset;
 		const Rune table[96];
@@ -2111,6 +2107,9 @@ tsetchar(Rune u, const Glyph *attr, int x, int y)
 	      0x23BB, 0x2500, 0x23BC, 0x23BD, 0x251C, 0x2524, 0x2534, 0x252C,
 	      0x2502, 0x2264, 0x2265, 0x3C0,  0x2260, 0xA3,   0xB7,   0}},
 	    {CS_TECHNICAL,
+	     // NOTE: 0x2B to 0x2E had been 0x239B, 0x239D, 0x239E, and 0x23A0,
+	     // but the new code points look closer to the original. 0x44 had
+	     // been 0x0394, but 0x2206 makes more sense.
 	     {0,      0x23B7, 0x250C, 0x2500, 0x2320, 0x2321, 0x2502, 0x23A1,
 	      0x23A3, 0x23A4, 0x23A6, 0x23A7, 0x23A9, 0x23AB, 0x23AD, 0x23A8,
 	      0x23AC, '<',    '<',    0x2572, 0x2571, '-',    '-',    '>',
@@ -2124,6 +2123,9 @@ tsetchar(Rune u, const Glyph *attr, int x, int y)
 	      0x3C0,  0x3C8,  0x3C1,  0x3C3,  0x3C4,  0x2426, 0x192,  0x3C9,
 	      0x3BE,  0x3C5,  0x3B6,  0x2190, 0x2191, 0x2192, 0x2193, 0}},
 	    {CS_CURSES,
+	     // These are similar to special_graphics but with previously
+	     // unchanged characters changed to either blanks or new characters,
+	     // particularly for use in curses.
 	     {0,      ' ',    ' ',    0x25A0, 0xA7,   ' ',    0x2603, ' ',
 	      ' ',    ' ',    ' ',    0x2192, 0x2190, 0x2191, 0x2193, ' ',
 	      0x2588, ' ',    ' ',    ' ',    ' ',    ' ',    ' ',    ' ',
@@ -3639,7 +3641,7 @@ xresize(int col, int row)
 ushort
 sixd_to_16bit(int x)
 {
-	return x == 0 ? 0 : 0x3737 + 0x2828 * x;
+	return (x == 0) ? 0 : (0x3737 + 0x2828 * x);
 }
 
 int
@@ -3946,16 +3948,16 @@ xunloadfonts(void)
 }
 
 void
-xzoom(int arg)
+xzoom(int increase)
 {
-	xzoomabs(usedfontsize + arg);
+	xzoomabs(usedfontsize + increase);
 }
 
 void
-xzoomabs(int arg)
+xzoomabs(int fontsize)
 {
 	xunloadfonts();
-	xloadfonts(usedfont, arg);
+	xloadfonts(usedfont, fontsize);
 	cresize(0, 0);
 	ttyresize();
 	redraw();
