@@ -33,6 +33,7 @@ dist: clean
 	rm -rf st-${VERSION}
 
 format:
+	clang-format -style=file -i config.def.h
 	clang-format -style=file -i st.c
 
 install: all terminfo
