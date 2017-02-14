@@ -2838,7 +2838,7 @@ csihandle(void)
 				}
 				break;
 			case '~':  // DECSSDT -- Select Status Display (Line)
-			           // Type
+				   // Type
 				switch (csiescseq.arg[0]) {
 				case 0:  // No status line
 				case 1:  // Indicator status line
@@ -4097,11 +4097,11 @@ xinit(int argc, char *argv[])
 	    {"-o",		".outputFile",	XrmoptionSepArg,	NULL},
 	    {"-T",		".title",	XrmoptionSepArg,	NULL},
 	    {"-t",		".title",	XrmoptionSepArg,	NULL},
-	    {"-U",		".iso14755Command", XrmoptionSepArg,	NULL},
+	    {"-u",		".iso14755Command", XrmoptionSepArg,	NULL},
 	    {"-v",		"._v",		XrmoptionNoArg,		"true"},
 	    {"-w",		".embed",	XrmoptionSepArg,	NULL},
 	    {"-display",	".display",	XrmoptionSepArg,	NULL},
-	    {"-xrm",	NULL,		XrmoptionResArg,	NULL},
+	    {"-xrm",		NULL,		XrmoptionResArg,	NULL},
 	};
 	// clang-format on
 
@@ -5077,7 +5077,8 @@ usage(void)
 {
 	die("usage: %s [-?ahiv] [-c <class>] [-f <font>] [-g <geometry>]\n"
 	    "          [-n <name>] [-o <file>] [-T <title>] [-t <title>]\n"
-	    "          [-w <windowid>] [-display <display>] [-xrm <xrm>]\n"
+	    "          [-u <ISO/IEC 14755 command>] [-w <windowid>]\n"
+	    "          [-display <display>] [-xrm <xrm>]\n"
 	    "          [[-e | --] <command> [<arg>...] | -l <line> "
 	    "[stty_args]]\n",
 	    argv0, argv0);
