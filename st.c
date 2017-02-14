@@ -159,6 +159,7 @@ enum term_mode {
 	MODE_UTF8 = 1 << 21,
 	MODE_ENABLE_COLUMN_CHANGE = 1 << 22,
 	MODE_CLEAR_ON_DECCOLM = 1 << 23,
+	MODE_WRITABLE_STATUS_LINE = 1 << 24,
 	MODE_MOUSE =
 	    MODE_MOUSEBTN | MODE_MOUSEMOTION | MODE_MOUSEX10 | MODE_MOUSEMANY,
 };
@@ -2823,7 +2824,7 @@ csihandle(void)
 				goto unknown;
 			}
 			break;
-		case '$':
+		case '$':  // DECSCPP -- Select Columns Per Page
 			switch (csiescseq.mode[1]) {
 			case '|':
 				if (IS_SET(MODE_ENABLE_COLUMN_CHANGE)) {
@@ -2836,6 +2837,28 @@ csihandle(void)
 					              xw.h);
 				}
 				break;
+			case '~':  // DECSSDT -- Select Status Display (Line)
+			           // Type
+				switch (csiescseq.arg[0]) {
+				case 0:  // No status line
+				case 1:  // Indicator status line
+					xresettitle();
+					MODBIT(term.mode, 0,
+					       MODE_WRITABLE_STATUS_LINE);
+					break;
+				case 2:  // Host-writable status line
+					if (!IS_SET(
+					        MODE_WRITABLE_STATUS_LINE)) {
+						xsettitle("");
+						MODBIT(
+						    term.mode, 1,
+						    MODE_WRITABLE_STATUS_LINE);
+					}
+					break;
+				default:
+					goto unknown;
+				}
+
 			default:
 				goto unknown;
 			}
@@ -2913,7 +2936,7 @@ strhandle(void)
 		case 0:
 		case 1:
 		case 2:
-			if (narg > 1) {
+			if (IS_SET(MODE_WRITABLE_STATUS_LINE) && narg > 1) {
 				xsettitle(strescseq.args[1]);
 			}
 			return;
