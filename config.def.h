@@ -571,9 +571,12 @@ static const Key key[] = {
  * ButtonRelease and MotionNotify.
  * If no match is found, regular selection is used.
  */
+// clang-format off
 static const uint selmasks[] = {
+        [SEL_REGULAR] = 0,
         [SEL_RECTANGULAR] = Mod1Mask,
 };
+// clang-format on
 
 /*
  * Printable characters in ASCII, used to estimate the advance width

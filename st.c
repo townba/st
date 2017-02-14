@@ -1010,7 +1010,6 @@ selsnap(int *x, int *y, int direction)
 void
 getbuttoninfo(const XEvent *e)
 {
-	size_t type;
 	uint state = e->xbutton.state & ~(Button1Mask | forceselmod);
 
 	sel.alt = IS_SET(MODE_ALTSCREEN);
@@ -1020,7 +1019,7 @@ getbuttoninfo(const XEvent *e)
 	selnormalize();
 
 	sel.type = SEL_REGULAR;
-	for (type = 1; type < LEN(selmasks); ++type) {
+	for (size_t type = 0; type < LEN(selmasks); ++type) {
 		if (modifiers_match(selmasks[type], state)) {
 			sel.type = type;
 			break;
