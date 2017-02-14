@@ -157,6 +157,8 @@ enum term_mode {
 	MODE_BRCKTPASTE = 1 << 19,
 	MODE_PRINT = 1 << 20,
 	MODE_UTF8 = 1 << 21,
+	MODE_ENABLE_COLUMN_CHANGE = 1 << 22,
+	MODE_CLEAR_ON_DECCOLM = 1 << 23,
 	MODE_MOUSE =
 	    MODE_MOUSEBTN | MODE_MOUSEMOTION | MODE_MOUSEX10 | MODE_MOUSEMANY,
 };
@@ -564,12 +566,14 @@ static int iofd = 1;
 static int opt_allowaltscreen;
 static const char **opt_cmd = NULL;
 static const char *opt_class = NULL;
+static unsigned int opt_cols = cols;
 static const char *opt_embed = NULL;
 static const char *opt_font = NULL;
 static const char *opt_io = NULL;
 static const char *opt_iso14755_cmd = NULL;
 static const char *opt_line = NULL;
 static const char *opt_name = NULL;
+static unsigned int opt_rows = rows;
 static const char *opt_title = NULL;
 static int oldbutton = 3;  // button event on startup: 3 = release
 
@@ -2434,6 +2438,25 @@ tsetmode(char interm, int set, const int *args, int narg)
 			case 1:  // DECCKM -- Cursor key
 				MODBIT(term.mode, set, MODE_APPCURSOR);
 				break;
+			case 3:  // DECCOLM -- Column  (IGNORED)
+				// Accept "unsetting" (selecting 80-column mode)
+				// even when DECCOLM is off because that's
+				// considered the default setting (even when
+				// it's not really the default).
+				if (!set || IS_SET(MODE_ENABLE_COLUMN_CHANGE)) {
+					cresize((set ? 132 : 80) * xw.cw +
+					            2 * borderpx,
+					        0);
+					ttyresize();
+					XResizeWindow(xw.dpy, xw.win, xw.w,
+					              xw.h);
+					if (IS_SET(MODE_CLEAR_ON_DECCOLM)) {
+						tclearregion(0, 0, term.col - 1,
+						             term.row - 1);
+					}
+					tmoveto(0, 0);
+				}
+				break;
 			case 5:  // DECSCNM -- Reverse video
 				mode = term.mode;
 				MODBIT(term.mode, set, MODE_REVERSE);
@@ -2450,7 +2473,6 @@ tsetmode(char interm, int set, const int *args, int narg)
 				break;
 			case 0:   // Error (IGNORED)
 			case 2:   // DECANM -- ANSI/VT52 (IGNORED)
-			case 3:   // DECCOLM -- Column  (IGNORED)
 			case 4:   // DECSCLM -- Scroll (IGNORED)
 			case 8:   // DECARM -- Auto repeat (IGNORED)
 			case 18:  // DECPFF -- Printer feed (IGNORED)
@@ -2461,8 +2483,16 @@ tsetmode(char interm, int set, const int *args, int narg)
 			case 25:  // DECTCEM -- Text Cursor Enable Mode
 				MODBIT(term.mode, !set, MODE_HIDE);
 				break;
+			case 40:  // Enable DECCOLM
+				MODBIT(term.mode, set,
+				       MODE_ENABLE_COLUMN_CHANGE);
+				break;
 			case 66:  // DECNKM -- Numeric Keypad Mode
 				MODBIT(term.mode, set, MODE_APPKEYPAD);
+				break;
+			case 95:  // DECNCSM -- No Clearing Screen On Column
+				  // Change Mode
+				MODBIT(term.mode, !set, MODE_CLEAR_ON_DECCOLM);
 				break;
 			case 9:  // X10 mouse compatibility mode
 				xsetpointermotion(0);
@@ -2588,7 +2618,6 @@ csihandle(void)
 		unknown:
 			fprintf(stderr, "erresc: unknown csi ");
 			csidump();
-			// die("");
 			break;
 		case '@':  // ICH -- Insert <n> blank char
 			DEFAULT(csiescseq.arg[0], 1);
@@ -2789,6 +2818,23 @@ csihandle(void)
 					goto unknown;
 				}
 				xw.cursor = csiescseq.arg[0];
+				break;
+			default:
+				goto unknown;
+			}
+			break;
+		case '$':
+			switch (csiescseq.mode[1]) {
+			case '|':
+				if (IS_SET(MODE_ENABLE_COLUMN_CHANGE)) {
+					DEFAULT(csiescseq.arg[0], opt_cols);
+					cresize(csiescseq.arg[0] * xw.cw +
+					            2 * borderpx,
+					        0);
+					ttyresize();
+					XResizeWindow(xw.dpy, xw.win, xw.w,
+					              xw.h);
+				}
 				break;
 			default:
 				goto unknown;
@@ -4035,7 +4081,6 @@ xinit(int argc, char *argv[])
 	    {"-xrm",	NULL,		XrmoptionResArg,	NULL},
 	};
 	// clang-format on
-	unsigned int startcols = cols, startrows = rows;
 
 	XrmInitialize();
 
@@ -4068,7 +4113,7 @@ xinit(int argc, char *argv[])
 	xw.l = xw.t = 0;
 	xw.gm = XParseGeometry(
 	    xgetresstr(maindb, "st.geometry", "St.Geometry", NULL), &xw.l,
-	    &xw.t, &startcols, &startrows);
+	    &xw.t, &opt_cols, &opt_rows);
 	xw.isfixed =
 	    xgetresbool(maindb, "st.fixedGeometry", "St.FixedGeometry", False);
 	opt_io = xgetresstr(maindb, "st.outputFile", "St.OutputFile", NULL);
@@ -4093,7 +4138,7 @@ xinit(int argc, char *argv[])
 		}
 	}
 
-	tnew(MAX(startcols, 1), MAX(startrows, 1));
+	tnew(MAX(opt_cols, 1), MAX(opt_rows, 1));
 
 	xw.scr = XDefaultScreen(xw.dpy);
 	xw.vis = XDefaultVisual(xw.dpy, xw.scr);
