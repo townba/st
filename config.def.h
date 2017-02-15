@@ -28,15 +28,12 @@ static const char iso14755_cmd[] =
 /* Form of C1 controls accepted in UTF-8 mode. */
 static enum c1utf8_form c1utf8_as = 0;
 
-/* identification sequence returned in DA and DECID */
-static const char vtiden[] = "\x1B[?6c";
-
 // The response to DA1.
 static const char da1_response[] =
     "\x1B[?65;1;2;7;9;12;18;19;21;22;23;24;42;44;45;46c";
 
-/* identification sequence returned in secondary DA */
-static const char vtiden2[] = "\x1B[>41;1;0c";
+// The response to DA2.
+static const char da2_response[] = "\x1B[>65;20;1c";
 
 /* Kerning / character bounding-box multipliers */
 static const float cwscale = 1.0;

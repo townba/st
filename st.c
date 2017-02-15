@@ -2869,7 +2869,8 @@ csihandle(void)
 		switch (csiescseq.mode[0]) {
 		case 'c':  // Send device attributes (secondary DA)
 			if (csiescseq.arg[0] == 0) {
-				ttywrite(vtiden2, sizeof(vtiden2) - 1);
+				ttywrite(da2_response,
+				         sizeof(da2_response) - 1);
 			}
 			break;
 		case 'm':  // Set/reset modify keys (IGNORED)
@@ -3357,10 +3358,7 @@ tcontrolcode(uchar ascii)
 	case 0x97:  // TODO(townba): EPA
 	case 0x98:  // TODO(townba): SOS
 	case 0x99:  // TODO(townba): SGCI
-		break;
 	case 0x9a:  // DECID -- Identify Terminal
-		ttywrite(vtiden, sizeof(vtiden) - 1);
-		break;
 	case 0x9b:  // TODO(townba): CSI
 	case 0x9c:  // TODO(townba): ST
 		break;
@@ -3429,9 +3427,6 @@ eschandle(uchar ascii)
 		} else {
 			tmoveto(term.c.x, term.c.y - 1);
 		}
-		break;
-	case 'Z':  // DECID -- Identify Terminal
-		ttywrite(vtiden, sizeof(vtiden) - 1);
 		break;
 	case 'c':  // RIS -- Reset to initial state
 		treset();
