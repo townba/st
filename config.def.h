@@ -176,8 +176,8 @@ static const char defaultosc52[] = "p";
 // clang-format off
 static const MouseShortcut mshortcuts[] = {
     /* button   mask            string */
-    { Button4,  XK_ANY_MOD,     "\031" },
-    { Button5,  XK_ANY_MOD,     "\005" },
+    { Button4,  XK_ANY_MOD,     "\x19" },
+    { Button5,  XK_ANY_MOD,     "\x05" },
 };
 // clang-format on
 
@@ -410,10 +410,10 @@ static const Key key[] = {
     { XK_Delete,        ControlMask|Mod1Mask,           "\x1B[3;7~",     0,    0,    0},
     { XK_Delete,        ControlMask|Mod1Mask|ShiftMask, "\x1B[3;8~",     0,    0,    0},
     { XK_Delete,        XK_ANY_MOD,     "\x1B[3~",       0,    0,    0},
-    { XK_BackSpace,     Mod1Mask,       "\x1B\177",      0,    0,    0},
-    { XK_BackSpace,     ControlMask,    "\010",          0,    0,    0},
-    { XK_BackSpace,     ControlMask|Mod1Mask,           "\x1B\010",      0,    0,    0},
-    { XK_BackSpace,     XK_ANY_MOD,     "\177",          0,    0,    0},
+    { XK_BackSpace,     Mod1Mask,       "\x1B\x7F",      0,    0,    0},
+    { XK_BackSpace,     ControlMask,    "\x08",          0,    0,    0},
+    { XK_BackSpace,     ControlMask|Mod1Mask,           "\x1B\x08",      0,    0,    0},
+    { XK_BackSpace,     XK_ANY_MOD,     "\x7F",          0,    0,    0},
     { XK_Home,          ShiftMask,      "\x1B[1;2H",     0,    0,    0},
     { XK_Home,          Mod1Mask,       "\x1B[1;3H",     0,    0,    0},
     { XK_Home,          Mod1Mask|ShiftMask,             "\x1B[1;4H",     0,    0,    0},
