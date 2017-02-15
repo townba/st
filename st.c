@@ -81,8 +81,8 @@
 #define DEFAULT(a, b) (a) = (a) ? (a) : (b)
 #define BETWEEN(x, a, b) ((a) <= (x) && (x) <= (b))
 #define DIVCEIL(n, d) (((n) + ((d)-1)) / (d))
-#define ISCONTROLC0(c) (BETWEEN(c, 0, 0x1f) || (c) == 0x7F)
-#define ISCONTROLC1(c) (BETWEEN(c, 0x80, 0x9f))
+#define ISCONTROLC0(c) (BETWEEN(c, 0, 0x1F) || (c) == 0x7F)
+#define ISCONTROLC1(c) (BETWEEN(c, 0x80, 0x9F))
 #define ISCONTROL(c) (ISCONTROLC0(c) || ISCONTROLC1(c))
 #define ISDELIM(u) (utf8strchr(worddelimiters, u) != NULL)
 #define LIMIT(x, a, b) (x) = (x) < (a) ? (a) : (x) > (b) ? (b) : (x)
@@ -96,9 +96,9 @@
 
 #define TRUECOLOR(r, g, b) (1 << 24 | (r) << 16 | (g) << 8 | (b))
 #define IS_TRUECOL(x) (1 << 24 & (x))
-#define TRUERED(x) (((x)&0xff0000) >> 8)
-#define TRUEGREEN(x) (((x)&0xff00))
-#define TRUEBLUE(x) (((x)&0xff) << 8)
+#define TRUERED(x) (((x)&0xFF0000) >> 8)
+#define TRUEGREEN(x) (((x)&0xFF00))
+#define TRUEBLUE(x) (((x)&0xFF) << 8)
 #define XA_CLIPBOARD XInternAtom(xw.dpy, "CLIPBOARD", 0)
 
 // Form of C1 controls accepted in UTF-8 mode.
@@ -2041,7 +2041,7 @@ csiparse(void)
 	long int v;
 
 	csiescseq.narg = 0;
-	if (BETWEEN(*p, 0x3c, 0x3f)) {
+	if (BETWEEN(*p, 0x3C, 0x3F)) {
 		csiescseq.interm = *p;
 		p++;
 	}
@@ -2894,7 +2894,7 @@ chardump(char c)
 		fprintf(stderr, "\\n");
 	} else if (c == '\r') {
 		fprintf(stderr, "\\r");
-	} else if (c == 0x1b) {
+	} else if (c == 0x1B) {
 		fprintf(stderr, "\\e");
 	} else {
 		fprintf(stderr, "\\x%02x", c);
@@ -2908,7 +2908,7 @@ csidump(void)
 
 	fprintf(stderr, "\\e[");
 	for (i = 0; i < csiescseq.len; i++) {
-		chardump(csiescseq.buf[i] & 0xff);
+		chardump(csiescseq.buf[i] & 0xFF);
 	}
 	putc('\n', stderr);
 }
@@ -3058,7 +3058,7 @@ strdump(void)
 
 	fprintf(stderr, "\\e%c", strescseq.type);
 	for (i = 0; i < strescseq.len; i++) {
-		c = strescseq.buf[i] & 0xff;
+		c = strescseq.buf[i] & 0xFF;
 		if (c == 0) {
 			putc('\n', stderr);
 			return;
@@ -3201,7 +3201,7 @@ techo(Rune u)
 {
 	if (ISCONTROL(u)) {  // control code
 		if (u & 0x80) {
-			u &= 0x7f;
+			u &= 0x7F;
 			tputc('^');
 			tputc('[');
 		} else if (u != '\n' && u != '\r' && u != '\t') {
@@ -3261,13 +3261,13 @@ tstrsequence(uchar c)
 		c = 'P';
 		term.esc |= ESC_DCS;
 		break;
-	case 0x9f:  // APC -- Application Program Command
+	case 0x9F:  // APC -- Application Program Command
 		c = '_';
 		break;
-	case 0x9e:  // PM -- Privacy Message
+	case 0x9E:  // PM -- Privacy Message
 		c = '^';
 		break;
-	case 0x9d:  // OSC -- Operating System Command
+	case 0x9D:  // OSC -- Operating System Command
 		c = ']';
 		break;
 	}
@@ -3343,12 +3343,12 @@ tcontrolcode(uchar ascii)
 		term.tabs[term.c.x] = 1;
 		break;
 	case 0x89:  // TODO(townba): HTJ
-	case 0x8a:  // TODO(townba): VTS
-	case 0x8b:  // TODO(townba): PLD
-	case 0x8c:  // TODO(townba): PLU
-	case 0x8d:  // TODO(townba): RI
-	case 0x8e:  // TODO(townba): SS2
-	case 0x8f:  // TODO(townba): SS3
+	case 0x8A:  // TODO(townba): VTS
+	case 0x8B:  // TODO(townba): PLD
+	case 0x8C:  // TODO(townba): PLU
+	case 0x8D:  // TODO(townba): RI
+	case 0x8E:  // TODO(townba): SS2
+	case 0x8F:  // TODO(townba): SS3
 	case 0x91:  // TODO(townba): PU1
 	case 0x92:  // TODO(townba): PU2
 	case 0x93:  // TODO(townba): STS
@@ -3358,14 +3358,14 @@ tcontrolcode(uchar ascii)
 	case 0x97:  // TODO(townba): EPA
 	case 0x98:  // TODO(townba): SOS
 	case 0x99:  // TODO(townba): SGCI
-	case 0x9a:  // DECID -- Identify Terminal
-	case 0x9b:  // TODO(townba): CSI
-	case 0x9c:  // TODO(townba): ST
+	case 0x9A:  // DECID -- Identify Terminal
+	case 0x9B:  // TODO(townba): CSI
+	case 0x9C:  // TODO(townba): ST
 		break;
 	case 0x90:  // DCS -- Device Control String
-	case 0x9d:  // OSC -- Operating System Command
-	case 0x9e:  // PM -- Privacy Message
-	case 0x9f:  // APC -- Application Program Command
+	case 0x9D:  // OSC -- Operating System Command
+	case 0x9E:  // PM -- Privacy Message
+	case 0x9F:  // APC -- Application Program Command
 		tstrsequence(ascii);
 		return;
 	}
@@ -3711,7 +3711,7 @@ sixd_to_16bit(int x)
 int
 xloadcolor(int i, const char *name, Color *ncolor)
 {
-	XRenderColor color = {.alpha = 0xffff};
+	XRenderColor color = {.alpha = 0xFFFF};
 
 	if (!name) {
 		if (BETWEEN(i, 16, 255)) {         // 256 color
@@ -3721,7 +3721,7 @@ xloadcolor(int i, const char *name, Color *ncolor)
 				color.blue = sixd_to_16bit(((i - 16) / 1) % 6);
 			} else {  // greyscale
 				color.red =
-				    0x0808 + 0x0a0a * (i - (6 * 6 * 6 + 16));
+				    0x0808 + 0x0A0A * (i - (6 * 6 * 6 + 16));
 				color.green = color.blue = color.red;
 			}
 			return XftColorAllocValue(xw.dpy, xw.vis, xw.cmap,
@@ -4238,9 +4238,9 @@ xinit(int argc, char *argv[])
 	XDefineCursor(xw.dpy, xw.win, cursor);
 
 	if (XParseColor(xw.dpy, xw.cmap, colorname[mousefg], &xmousefg) == 0) {
-		xmousefg.red = 0xffff;
-		xmousefg.green = 0xffff;
-		xmousefg.blue = 0xffff;
+		xmousefg.red = 0xFFFF;
+		xmousefg.green = 0xFFFF;
+		xmousefg.blue = 0xFFFF;
 	}
 
 	if (XParseColor(xw.dpy, xw.cmap, colorname[mousebg], &xmousebg) == 0) {
@@ -4405,7 +4405,7 @@ xgetcolor(uint32_t basecol, XRenderColor *rendercol, Color *truecol)
 	if (!IS_TRUECOL(basecol)) {
 		return &dc.col[basecol];
 	}
-	rendercol->alpha = 0xffff;
+	rendercol->alpha = 0xFFFF;
 	rendercol->red = TRUERED(basecol);
 	rendercol->green = TRUEGREEN(basecol);
 	rendercol->blue = TRUEBLUE(basecol);
