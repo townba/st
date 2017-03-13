@@ -2492,7 +2492,7 @@ tsetmode(char interm, int set, const int *args, int narg)
 				MODBIT(term.mode, set, MODE_APPKEYPAD);
 				break;
 			case 95:  // DECNCSM -- No Clearing Screen On Column
-				  // Change Mode
+			          // Change Mode
 				MODBIT(term.mode, !set, MODE_CLEAR_ON_DECCOLM);
 				break;
 			case 9:  // X10 mouse compatibility mode
@@ -2828,7 +2828,8 @@ csihandle(void)
 			switch (csiescseq.mode[1]) {
 			case '|':
 				if (IS_SET(MODE_ENABLE_COLUMN_CHANGE)) {
-					DEFAULT(csiescseq.arg[0], opt_cols);
+					DEFAULT(csiescseq.arg[0],
+					        (int)opt_cols);
 					cresize(csiescseq.arg[0] * xw.cw +
 					            2 * borderpx,
 					        0);
@@ -2838,7 +2839,7 @@ csihandle(void)
 				}
 				break;
 			case '~':  // DECSSDT -- Select Status Display (Line)
-				   // Type
+			           // Type
 				switch (csiescseq.arg[0]) {
 				case 0:  // No status line
 				case 1:  // Indicator status line
@@ -3193,7 +3194,7 @@ tputtab(int n)
 			}
 		}
 	}
-	term.c.x = LIMIT(x, 0, term.col - 1);
+	term.c.x = LIMIT(x, 0, (uint)(term.col - 1));
 }
 
 void

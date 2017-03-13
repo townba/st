@@ -147,8 +147,8 @@ static const unsigned int cursorshape = 2;
  * Default columns and rows numbers
  */
 
-static const unsigned int cols = 80;
-static const unsigned int rows = 24;
+enum { cols = 80 };
+enum { rows = 24 };
 
 /*
  * Default colour and shape of the mouse cursor
@@ -167,7 +167,7 @@ static const unsigned int defaultattr = 7;
  * Default destination(s) for OSC 52 (copy/paste) operations: 'c' is clipboard,
  * 'p' is primary. An empty string disables OSC 52.
  */
-static const char defaultosc52[] = "p";
+static const char defaultosc52[] = "c";
 
 /*
  * Internal mouse shortcuts.

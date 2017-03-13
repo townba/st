@@ -25,7 +25,7 @@ st.o : st.c config.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 st : st.o
-	$(CC) $(LDFLAGS) $(LDLIBS) $< -o $@
+	$(CC) $(LDFLAGS) $< -o $@ $(LOADLIBES) $(LDLIBS)
 
 clean :
 	rm -f st st.bc st.i st.o st.s $(TARBALL).tar.gz

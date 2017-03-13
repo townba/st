@@ -20,9 +20,9 @@ endif
 
 # flags
 CPPFLAGS += -DVERSION=\"${VERSION}\" -D_XOPEN_SOURCE=600 \
-       -Wall -Wextra -Wpedantic -Werror -Wno-missing-field-initializers \
+       -Wall -Wextra -Wpedantic -Wno-missing-field-initializers \
        -Wmissing-prototypes \
-       -Wno-variadic-macros -Wunused-macros \
+       -Wno-type-limits -Wno-variadic-macros -Wunused-macros \
        -I. -I/usr/include -I${X11INC} \
        $(shell pkg-config --cflags fontconfig) \
        $(shell pkg-config --cflags freetype2)
@@ -31,7 +31,7 @@ CXXFLAGS += -std=c++11
 LDFLAGS += -L/usr/lib -L${X11LIB} \
        $(shell pkg-config --libs-only-L fontconfig)  \
        $(shell pkg-config --libs-only-L freetype2)
-LDLIBS +=  -lc -lm ${OSDEP_LIBS} -lX11 -lutil -lXft \
+LDLIBS += -lc -lm ${OSDEP_LIBS} -lX11 -lutil -lXft \
        $(shell pkg-config --libs-only-l fontconfig)  \
        $(shell pkg-config --libs-only-l freetype2)
 
